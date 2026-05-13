@@ -82,6 +82,7 @@ def update_task_status(request, task_id):
 
         task = Task.objects.get(id=task_id)
         task.done = done_status
+
         task.save()
         html = render_to_string('task_item.html', {
             'task_id': task.id,

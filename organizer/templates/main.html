@@ -43,45 +43,45 @@
         
         // Funkcja do aktualizacji kolejności zadań
         const changeOrder = function (arg) {
-    let listElement;
+        let listElement;
 
-    // Sprawdzamy, czy arg to element HTML (np. z Twojego wywołania ręcznego)
-    if (arg instanceof HTMLElement) {
-        listElement = arg;
-    } 
-    // Sprawdzamy, czy arg to zdarzenie SortableJS (z mechanizmu przeciągania)
-    else if (arg && arg.from) {
-        listElement = arg.from;
-    } 
-    // Jeśli nic nie przekazano, domyślnie bierzemy listę aktywnych zadań
-    else {
-        listElement = document.getElementById('sortable-list');
-    }
-
-    if (!listElement) return;
-
-    const order = Array.from(listElement.querySelectorAll('.list-group-item'))
-                       .map(item => item.dataset.id);
-    
-    console.log("Aktualizacja kolejności dla:", listElement.id, order);
-
-    fetch('{% url "update_order" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({ 'order': order })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            listElement.style.backgroundColor = '#d4edda';
-            setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+        // Sprawdzamy, czy arg to element HTML
+        if (arg instanceof HTMLElement) {
+            listElement = arg;
+        } 
+        // Sprawdzamy, czy arg to zdarzenie SortableJS (z mechanizmu przeciągania)
+        else if (arg && arg.from) {
+            listElement = arg.from;
+        } 
+        // Jeśli nic nie przekazano, domyślnie bierzemy listę aktywnych zadań
+        else {
+            listElement = document.getElementById('sortable-list');
         }
-    })
-    .catch(error => console.error('Błąd order:', error));
-};
+
+        if (!listElement) return;
+
+        const order = Array.from(listElement.querySelectorAll('.list-group-item'))
+                        .map(item => item.dataset.id);
+        
+        console.log("Aktualizacja kolejności dla:", listElement.id, order);
+
+        fetch('{% url "update_order" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 'order': order })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                listElement.style.backgroundColor = '#d4edda';
+                setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+            }
+        })
+        .catch(error => console.error('Błąd order:', error));
+    };
 
         // Inicjalizacja SortableJS dla listy aktywnych zadań
         Sortable.create(el, {
