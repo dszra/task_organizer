@@ -1,0 +1,16 @@
+<li class="list-group-item" 
+    data-id="{{ task_id }}" 
+    style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
+    
+    <i class="handle">⠿</i>
+    <strong>{{ task_title }}</strong>
+    <p>{{ task_description }}</p>
+    <p>
+        Done: <input type="checkbox" 
+               class="task-done-checkbox" 
+               {% if is_done %}checked{% endif %}>
+    </p>
+    {% if task_end_date %}
+        <p>End Date: {{ task_end_date }}</p>
+    {% endif %}
+</li>

@@ -1,0 +1,188 @@
+<html>
+<head>
+    <title>Organizer</title>
+    <!-- Dodajmy proste style, żeby widzieć, że to działa -->
+    <style>
+        .list-group-item { background: white; cursor: default; }
+        .handle { cursor: grab; margin-right: 10px; padding: 5px; background: #eee; }
+        .handle:active { cursor: grabbing; }
+        .bg-light { background-color: #2887e6; border: 2px dashed #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Tasks</h1>
+    <form method="post">
+        {% csrf_token %}
+        {{ formset.management_form }}
+    <ul id="sortable-list" style="list-style: none; padding: 0;">
+        {% for task in tasks %}
+        {% if not task.done %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date %}
+            {% endif %}
+        {% endfor %}
+    </ul>
+
+    <h1>Add new task</h1>
+    {{ form.as_p }}
+    <button type="submit" id="add-task-bttn">Add Task</button>
+
+    <h1>Done Tasks</h1>
+    <ul id="sortable-list-done" style="list-style: none; padding: 0;">
+        {% for task in tasks %}
+        {% if task.done %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date %}
+            {% endif %}
+        {% endfor %}
+    </ul>
+    </form>
+
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        const el = document.getElementById('sortable-list');
+        const elDone = document.getElementById('sortable-list-done');
+        
+        // Funkcja do aktualizacji kolejności zadań
+        const changeOrder = function (arg) {
+    let listElement;
+
+    // Sprawdzamy, czy arg to element HTML (np. z Twojego wywołania ręcznego)
+    if (arg instanceof HTMLElement) {
+        listElement = arg;
+    } 
+    // Sprawdzamy, czy arg to zdarzenie SortableJS (z mechanizmu przeciągania)
+    else if (arg && arg.from) {
+        listElement = arg.from;
+    } 
+    // Jeśli nic nie przekazano, domyślnie bierzemy listę aktywnych zadań
+    else {
+        listElement = document.getElementById('sortable-list');
+    }
+
+    if (!listElement) return;
+
+    const order = Array.from(listElement.querySelectorAll('.list-group-item'))
+                       .map(item => item.dataset.id);
+    
+    console.log("Aktualizacja kolejności dla:", listElement.id, order);
+
+    fetch('{% url "update_order" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ 'order': order })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            listElement.style.backgroundColor = '#d4edda';
+            setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+        }
+    })
+    .catch(error => console.error('Błąd order:', error));
+};
+
+        // Inicjalizacja SortableJS dla listy aktywnych zadań
+        Sortable.create(el, {
+            animation: 150,
+            handle: '.handle',
+            ghostClass: 'bg-light',
+            onEnd: changeOrder
+        });
+
+        // Zmiana statusu zadania (done/undone) po kliknięciu checkboxa, przenoszenie między listami, zmiana wartości pola order
+        document.addEventListener('change', function(event) {
+        // Sprawdzamy, czy kliknięty element to nasz checkbox
+            if (event.target && event.target.classList.contains('task-done-checkbox')) {
+                const checkbox = event.target;
+                const taskItem = checkbox.closest('.list-group-item');
+                const taskId = taskItem.dataset.id;
+                const doneStatus = checkbox.checked;
+
+                const activeList = document.getElementById('sortable-list');
+                const doneList = document.getElementById('sortable-list-done');
+
+                fetch(`/update_task_status/${taskId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ 'done': doneStatus })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                    // 1. Wybieramy listę docelową
+                    const targetList = doneStatus ? 
+                        document.getElementById('sortable-list-done') : 
+                        document.getElementById('sortable-list');
+
+                    // 2. Tworzymy nowy element zadania z HTML otrzymanego z serwera
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.html.trim();
+                    const updatedTaskItem = tempDiv.firstElementChild;
+                    if (!updatedTaskItem) {
+                        console.error("Nie udało się utworzyć elementu z data.html");
+                        return;
+                    }
+
+                    // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był,
+                    // lub po prostu usuwamy stary i dodajemy nowy do nowej listy.
+                    // replaceWith jest świetne, bo "wskakuje" w to samo miejsce.
+                    taskItem.replaceWith(updatedTaskItem);
+
+                    // 4. Jeśli status się zmienił, musimy upewnić się, że nowy element 
+                    // wylądował w poprawnej sekcji (Done vs Active)
+                    targetList.appendChild(updatedTaskItem);
+
+                    console.log('Zadanie zaktualizowane i przeniesione!');
+                    changeOrder(targetList);
+                    } else {
+                        console.error('Błąd serwera');
+                        checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd:', error);
+                    checkbox.checked = !doneStatus;
+                });
+            }
+        });
+
+        const addTaskButton = document.getElementById('add-task-bttn');
+        addTaskButton.addEventListener('click', function(event) {
+            event.preventDefault(); // Zapobiega domyślnemu zachowaniu przycisku
+            const formData = new FormData(document.querySelector('form'));
+
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: new URLSearchParams(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const list  = document.getElementById('sortable-list');
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.html;
+                    const newTaskItem = tempDiv.firstElementChild;
+                    list.appendChild(newTaskItem);
+                    console.log('Zadanie dodane!');
+                    console.log(data.task_id);
+                    
+                } else {
+                    console.error('Nie udało się dodać zadania.');
+                }
+            })
+            .catch(error => console.error('Błąd:', error));
+        });
+
+
+    </script>
+</body>
+</html>
