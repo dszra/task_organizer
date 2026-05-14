@@ -11,30 +11,30 @@
 </head>
 <body>
     <h1>Tasks</h1>
-    <form method="post">
-        {% csrf_token %}
-        {{ formset.management_form }}
+    
     <ul id="sortable-list" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if not task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order %}
             {% endif %}
         {% endfor %}
     </ul>
-
+    
+    <form id="add-task-form">
+    {% csrf_token %}
     <h1>Add new task</h1>
     {{ form.as_p }}
-    <button type="submit" id="add-task-bttn">Add Task</button>
+    <button type="submit" id="add-task-btn">Add Task</button>
+    </form>
 
     <h1>Done Tasks</h1>
     <ul id="sortable-list-done" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order %}
             {% endif %}
         {% endfor %}
     </ul>
-    </form>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
@@ -150,10 +150,10 @@
         });
 
         // Obsługa dodawania nowego zadania przez AJAX
-        const addTaskButton = document.getElementById('add-task-bttn');
+        const addTaskButton = document.getElementById('add-task-btn');
         addTaskButton.addEventListener('click', function(event) {
             event.preventDefault(); // Zapobiega domyślnemu zachowaniu przycisku
-            const formData = new FormData(document.querySelector('form'));
+            const formData = new FormData(document.querySelector('#add-task-form'));
 
             fetch('', {
                 method: 'POST',
@@ -211,6 +211,56 @@
             }
         });
 
+        // Obsługa edycji zadania przez AJAX
+        document.addEventListener('click', function(e) {
+            const taskItem = e.target.closest('.list-group-item');
+            if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
+            const taskView = taskItem.querySelector('.task-view');
+            const taskEdit = taskItem.querySelector('.task-edit');
+
+            // Obsługa przycisku "Edit"
+            if (e.target.classList.contains('edit-task-btn')) {
+                taskView.style.display = 'none';
+                taskEdit.style.display = 'block';
+            }
+            // Obsługa przycisku "Cancel"
+            if (e.target.classList.contains('cancel-edit-btn')) {
+                taskEdit.style.display = 'none';
+                taskView.style.display = 'block';
+            }
+            // Obsługa formularza edycji
+            if (e.target.classList.contains('save-edit-btn')) {
+                const form = taskEdit.querySelector('.edit-task-form');
+                const formData = new FormData(form);
+                const taskId = taskItem.dataset.id;
+
+                fetch(`/edit_task/${taskId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData.entries()))
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = data.html.trim();
+                        const updatedTaskItem = tempDiv.firstElementChild;
+                        if (!updatedTaskItem) {
+                            console.error("Nie udało się utworzyć elementu z data.html");
+                            return;
+                        }
+                        taskItem.replaceWith(updatedTaskItem);
+                        console.log('Zadanie zaktualizowane!');
+                    } else {
+                        console.error('Nie udało się zaktualizować zadania.');
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
+            }
+        });
 
     </script>
 </body>

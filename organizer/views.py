@@ -95,6 +95,7 @@ def update_task_status(request, task_id):
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
+# Task delete
 @require_http_methods(["DELETE"])
 def delete_task(request, task_id):
     """View to delete a task based on the received task ID.
@@ -104,5 +105,48 @@ def delete_task(request, task_id):
         task = Task.objects.get(id=task_id)
         task.delete()
         return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+# Task edit
+@require_http_methods(["PATCH"])
+def edit_task(request, task_id):
+    """View to edit a task based on the received JSON data.
+    Expects a JSON payload with the updated task data, e.g.:
+    {
+        "title": "New Title",
+        "description": "New Description",
+        "done": true,
+        "end_date": "2024-06-30",
+        "project": "New Project"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        task = Task.objects.get(id=task_id)
+
+        task.title = data.get('title', task.title)
+        task.description = data.get('description', task.description)
+        task.done = data.get('done', task.done)
+        end_date_str = data.get('end_date')
+        if end_date_str:
+            task.end_date = end_date_str
+        project_name = data.get('project')
+        if project_name:
+            project, created = Project.objects.get_or_create(name=project_name)
+            task.project = project
+
+        task.save()
+
+        html = render_to_string('task_item.html', {
+            'task_id': task.id,
+            'task_title': task.title,
+            'task_description': task.description,
+            'is_done': task.done,
+            'task_end_date': task.end_date,
+            'task_project': task.project
+        })
+
+        return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

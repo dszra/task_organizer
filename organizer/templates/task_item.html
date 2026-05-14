@@ -1,17 +1,43 @@
 <li class="list-group-item" 
     data-id="{{ task_id }}" 
     style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
+    <!-- Widok statyczny zadania -->
+    <div class="task-view" style="display: block;">
     
-    <i class="handle">⠿</i>
-    <strong>{{ task_title }}</strong>
-    <p>{{ task_description }}</p>
-    <p>
-        Done: <input type="checkbox" 
-               class="task-done-checkbox" 
-               {% if is_done %}checked{% endif %}>
-    </p>
-    {% if task_end_date %}
-        <p>End Date: {{ task_end_date }}</p>
-    {% endif %}
-    <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
+        <i class="handle">⠿</i>
+        <strong>{{ task_title }}</strong>
+        <p>{{ task_description }}</p>
+        <p>
+            Done: <input type="checkbox" 
+                class="task-done-checkbox" 
+                {% if is_done %}checked{% endif %}>
+        </p>
+        {% if task_end_date %}
+            <p>End Date: {{ task_end_date }}</p>
+        {% endif %}
+        {% if task_project %}
+            <p>Project: {{ task_project.name }}</p>
+        {% endif %}
+        <p>Order: {{ task_order }}</p>
+        <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
+        <button class="edit-task-btn" style="background-color: blue; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
+    </div>
+
+    <!-- Widok edycji zadania, domyślnie ukryty -->
+    <div class="task-edit" style="display: none;">
+        <form class="edit-task-form">
+            {% csrf_token %}
+            <input type="text" name="title" value="{{ task_title }}" placeholder="Title" required><br>
+            <textarea name="description" placeholder="Description">{{ task_description }}</textarea><br>
+            <label>
+                Done: <input type="checkbox" name="done" {% if is_done %}checked{% endif %}>
+            </label><br>
+            <input type="date" name="end_date" value="{{ task_end_date|date:'Y-m-d' }}"><br>
+            <input type="text" name="project" value="{{ task_project.name }}" placeholder="Project"><br>
+            <button type="button" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
+            <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
+        </form>
+    </div>
+
+    
 </li>
