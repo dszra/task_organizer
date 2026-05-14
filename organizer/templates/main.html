@@ -119,7 +119,7 @@
 
         // Zmiana statusu zadania (done/undone) po kliknięciu checkboxa, przenoszenie między listami, zmiana wartości pola order
         document.addEventListener('change', function(event) {
-        // Sprawdzamy, czy kliknięty element to nasz checkbox
+            // Sprawdzamy, czy kliknięty element to nasz checkbox
             if (event.target && event.target.classList.contains('task-done-checkbox')) {
                 const checkbox = event.target;
                 const taskItem = checkbox.closest('.list-group-item');
@@ -198,7 +198,7 @@
                     console.log('Zadanie dodane!');
                     console.log(data.task_id);
                     // Czyszczenie formularza
-                    document.querySelector('form').reset();
+                    document.querySelector('#add-task-form').reset();
                     // Ustawienie kolejności dla nowego zadania
                     const numOrder = list.querySelectorAll('.list-group-item').length;
                     newTaskItem.dataset.order = numOrder;
