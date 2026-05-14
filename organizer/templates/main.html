@@ -43,48 +43,63 @@
         
         // Funkcja do aktualizacji kolejności zadań
         const changeOrder = function (arg) {
-            let listElement;
+    let listElement;
 
-            if (arg instanceof HTMLElement) {
-                listElement = arg;
-            } 
-            else if (arg && arg.from) {
-                listElement = arg.from;
-            } 
-            else {
-                listElement = document.getElementById('sortable-list');
-            }
+    // 1. Określamy, który element wywołał funkcję
+    if (arg instanceof HTMLElement) {
+        listElement = arg;
+    } else if (arg && arg.from) {
+        listElement = arg.from;
+    } else {
+        listElement = document.getElementById('sortable-list');
+    }
 
-            // Jeśli listElement nie istnieje LUB jest listą "done", przerywamy funkcję.
-            if (!listElement || listElement.id === 'sortable-list-done') {
-                console.log("Pominięto aktualizację kolejności dla listy Done.");
-                return;
-            }
+    if (!listElement) return;
 
-            const order = Array.from(listElement.querySelectorAll('.list-group-item'))
-                            .map(item => item.dataset.id)
-                            .filter(id => id !== undefined);
-            
-            console.log("Aktualizacja kolejności dla:", listElement.id, order);
+    // 2. Jeśli to lista "Done", nie wysyłamy jej kolejności do bazy,
+    // ALE wywołujemy changeOrder ponownie dla głównej listy, aby upewnić się, że tam porządek jest OK.
+    if (listElement.id === 'sortable-list-done') {
+        console.log("Lista Done - wymuszam aktualizację głównej listy.");
+        const mainList = document.getElementById('sortable-list');
+        if (mainList) {
+            // Wywołujemy rekurencyjnie dla głównej listy, ale tylko raz
+            updateOrderOnServer(mainList);
+        }
+        return; 
+    }
 
-            fetch('{% url "update_order" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: JSON.stringify({ 'order': order })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    listElement.style.backgroundColor = '#d4edda';
-                    setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
-                }
-            })
-            .catch(error => console.error('Błąd order:', error));
-        };
+    // 3. Jeśli to nie była lista Done, po prostu aktualizujemy
+    updateOrderOnServer(listElement);
+};
 
+// Wydzielona funkcja pomocnicza, żeby kod był czystszy
+function updateOrderOnServer(listElement) {
+    const order = Array.from(listElement.querySelectorAll('.list-group-item'))
+                       .map(item => item.dataset.id)
+                       .filter(id => id !== undefined);
+    
+    if (order.length === 0) return;
+
+    console.log("Wysyłam nową kolejność dla:", listElement.id, order);
+
+    fetch('{% url "update_order" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ 'order': order })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            listElement.style.transition = 'background-color 0.5s';
+            listElement.style.backgroundColor = '#d4edda';
+            setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+        }
+    })
+    .catch(error => console.error('Błąd order:', error));
+}
         // Inicjalizacja SortableJS dla listy aktywnych zadań
         Sortable.create(el, {
             animation: 150,
