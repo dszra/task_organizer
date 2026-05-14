@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from .models import Task, Project
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.http import JsonResponse
 import json
 from .forms import TaskForm
@@ -36,7 +36,6 @@ def main_view(request):
     else:
 
         form = TaskForm()
-
 
     return render(request, "main.html", {"tasks": tasks, "form": form})
 
@@ -93,5 +92,17 @@ def update_task_status(request, task_id):
         })
 
         return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+@require_http_methods(["DELETE"])
+def delete_task(request, task_id):
+    """View to delete a task based on the received task ID.
+    Expects a DELETE request with the task ID in the URL.
+    """
+    try:
+        task = Task.objects.get(id=task_id)
+        task.delete()
+        return JsonResponse({'status': 'success'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

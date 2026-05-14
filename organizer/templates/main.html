@@ -43,45 +43,47 @@
         
         // Funkcja do aktualizacji kolejności zadań
         const changeOrder = function (arg) {
-        let listElement;
+            let listElement;
 
-        // Sprawdzamy, czy arg to element HTML
-        if (arg instanceof HTMLElement) {
-            listElement = arg;
-        } 
-        // Sprawdzamy, czy arg to zdarzenie SortableJS (z mechanizmu przeciągania)
-        else if (arg && arg.from) {
-            listElement = arg.from;
-        } 
-        // Jeśli nic nie przekazano, domyślnie bierzemy listę aktywnych zadań
-        else {
-            listElement = document.getElementById('sortable-list');
-        }
-
-        if (!listElement) return;
-
-        const order = Array.from(listElement.querySelectorAll('.list-group-item'))
-                        .map(item => item.dataset.id);
-        
-        console.log("Aktualizacja kolejności dla:", listElement.id, order);
-
-        fetch('{% url "update_order" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({ 'order': order })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                listElement.style.backgroundColor = '#d4edda';
-                setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+            if (arg instanceof HTMLElement) {
+                listElement = arg;
+            } 
+            else if (arg && arg.from) {
+                listElement = arg.from;
+            } 
+            else {
+                listElement = document.getElementById('sortable-list');
             }
-        })
-        .catch(error => console.error('Błąd order:', error));
-    };
+
+            // Jeśli listElement nie istnieje LUB jest listą "done", przerywamy funkcję.
+            if (!listElement || listElement.id === 'sortable-list-done') {
+                console.log("Pominięto aktualizację kolejności dla listy Done.");
+                return;
+            }
+
+            const order = Array.from(listElement.querySelectorAll('.list-group-item'))
+                            .map(item => item.dataset.id)
+                            .filter(id => id !== undefined);
+            
+            console.log("Aktualizacja kolejności dla:", listElement.id, order);
+
+            fetch('{% url "update_order" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ 'order': order })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    listElement.style.backgroundColor = '#d4edda';
+                    setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+                }
+            })
+            .catch(error => console.error('Błąd order:', error));
+        };
 
         // Inicjalizacja SortableJS dla listy aktywnych zadań
         Sortable.create(el, {
@@ -115,9 +117,7 @@
                 .then(data => {
                     if (data.status === 'success') {
                     // 1. Wybieramy listę docelową
-                    const targetList = doneStatus ? 
-                        document.getElementById('sortable-list-done') : 
-                        document.getElementById('sortable-list');
+                    const targetList = doneStatus ? doneList : activeList;
 
                     // 2. Tworzymy nowy element zadania z HTML otrzymanego z serwera
                     const tempDiv = document.createElement('div');
@@ -128,9 +128,7 @@
                         return;
                     }
 
-                    // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był,
-                    // lub po prostu usuwamy stary i dodajemy nowy do nowej listy.
-                    // replaceWith jest świetne, bo "wskakuje" w to samo miejsce.
+                    // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był (to zachowa event listener dla checkboxa)
                     taskItem.replaceWith(updatedTaskItem);
 
                     // 4. Jeśli status się zmienił, musimy upewnić się, że nowy element 
@@ -151,6 +149,7 @@
             }
         });
 
+        // Obsługa dodawania nowego zadania przez AJAX
         const addTaskButton = document.getElementById('add-task-bttn');
         addTaskButton.addEventListener('click', function(event) {
             event.preventDefault(); // Zapobiega domyślnemu zachowaniu przycisku
@@ -174,12 +173,42 @@
                     list.appendChild(newTaskItem);
                     console.log('Zadanie dodane!');
                     console.log(data.task_id);
+                    // Czyszczenie formularza
+                    document.querySelector('form').reset();
                     
                 } else {
                     console.error('Nie udało się dodać zadania.');
                 }
             })
             .catch(error => console.error('Błąd:', error));
+        });
+
+        // Obsługa usuwania zadania przez AJAX
+        document.addEventListener('click', function(event) {
+            if (event.target && event.target.classList.contains('delete-task-btn')) {
+                const deleteButton = event.target;
+                const taskItem = deleteButton.closest('.list-group-item');
+                const taskId = taskItem.dataset.id;
+                if (confirm('Czy na pewno chcesz usunąć to zadanie?')) {
+                    fetch(`/delete_task/${taskId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            taskItem.remove();
+                            changeOrder(); // Aktualizacja kolejności po usunięciu
+                            console.log('Zadanie usunięte!');
+                        } else {
+                            console.error('Nie udało się usunąć zadania.');
+                        }
+                    })
+                    .catch(error => console.error('Błąd:', error));
+                }
+            }
         });
 
 

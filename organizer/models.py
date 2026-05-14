@@ -11,14 +11,16 @@ class Project(models.Model):
 
 class Task(models.Model):
     title = models.CharField(max_length=200)
-    description = models.TextField()
+    description = models.TextField(null=True, blank=True)
     create_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(null=True, blank=True)
     done = models.BooleanField(default=False)
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
-        related_name='tasks'
+        related_name='tasks',
+        null=True,
+        blank=True
     )
     order = models.PositiveIntegerField(db_index=True, null=True, blank=True)
 
