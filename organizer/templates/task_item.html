@@ -5,7 +5,10 @@
     <div class="task-view" style="display: block;">
     
         <i class="handle">⠿</i>
+        <button class="expand-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9660;</button>
+        <button class="collapse-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9654;</button>
         <strong>{{ task_title }}</strong>
+        <div class="task-details" style="display: block; margin-top: 10px;">
         <p>{{ task_description }}</p>
         <p>
             Done: <input type="checkbox" 
@@ -23,6 +26,8 @@
         {% endif %}
         <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
         <button class="edit-task-btn" style="background-color: blue; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
+        <button class="do-now-btn" style="background-color: orange; color: white; border: none; padding: 5px 10px; cursor: pointer;">Do Now</button>
+        </div>
     </div>
 
     <!-- Widok edycji zadania, domyślnie ukryty -->

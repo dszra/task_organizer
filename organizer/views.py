@@ -28,6 +28,7 @@ def main_view(request):
                 'task_id': task.id,
                 'task_title': task.title,
                 'task_description': task.description,
+                'task_project': task.project,
                 'is_done': task.done
             })
             return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})

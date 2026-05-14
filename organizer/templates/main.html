@@ -23,8 +23,10 @@
     <form id="add-task-form">
     {% csrf_token %}
     <h1>Add new task</h1>
-    {{ form.as_p }}
-    <button type="submit" id="add-task-btn">Add Task</button>
+    <br>Title: {{ form.title }}
+    <br>Description: {{ form.description }}
+    <br>Project: {{ form.project }}
+    <br><button type="submit" id="add-task-btn">Add Task</button>
     </form>
 
     <h1>Done Tasks</h1>
@@ -292,6 +294,35 @@
                 .catch(error => console.error('Błąd:', error));
             }
         });
+
+        // Obsługa przycisku "Do Now" - przenoszenie zadania na początek listy
+        document.addEventListener('click', function(e) {
+            const taskItem = e.target.closest('.list-group-item');
+            if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
+            if (e.target.classList.contains('do-now-btn')) {
+                console.log("Do Now clicked for task ID:", taskItem.dataset.id);
+                const list = document.getElementById('sortable-list');
+                list.prepend(taskItem);
+                changeOrder(list);
+            }
+        });
+
+        document.addEventListener('click', function(e) {
+            const taskItem = e.target.closest('.list-group-item');
+            if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
+            if (e.target.classList.contains('expand-btn')) {
+                const details = taskItem.querySelector('.task-details');
+                if (details) {
+                    details.style.display = 'block';
+                }
+            }
+            if (e.target.classList.contains('collapse-btn')) {
+                const details = taskItem.querySelector('.task-details');
+                if (details) {
+                    details.style.display = 'none';
+                }
+            }
+        })
 
     </script>
 </body>
