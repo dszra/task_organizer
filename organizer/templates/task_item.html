@@ -18,7 +18,9 @@
         {% if task_project %}
             <p>Project: {{ task_project.name }}</p>
         {% endif %}
-        <p>Order: {{ task_order }}</p>
+        {% if not is_done %}
+        <p class="task-order">Order: {{ task_order }}</p>
+        {% endif %}
         <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
         <button class="edit-task-btn" style="background-color: blue; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
     </div>

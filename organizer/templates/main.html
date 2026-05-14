@@ -96,6 +96,15 @@ function updateOrderOnServer(listElement) {
             listElement.style.transition = 'background-color 0.5s';
             listElement.style.backgroundColor = '#d4edda';
             setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+            const items = listElement.querySelectorAll('.list-group-item');
+            items.forEach((item, index) => {
+                const newOrder = index + 1;
+                item.dataset.order = newOrder;
+                const orderDisplay = item.querySelector('.task-order');
+                if (orderDisplay) {
+                    orderDisplay.textContent = `Order: ${newOrder}`;
+                }
+            });
         }
     })
     .catch(error => console.error('Błąd order:', error));
