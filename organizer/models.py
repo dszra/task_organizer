@@ -26,8 +26,9 @@ class Task(models.Model):
 
     def order_num(self):
         if not self.pk and not self.done and self.order is None or self.order is 0:
-            high_order = Task.objects.filter(project=self.project, done=False).aggregate(models.Max('order'))['order__max']
-            self.order = (high_order + 1) if high_order is not None else 0
+            high_order = Task.objects.filter(done=False).aggregate(models.Max('order'))['order__max']
+            print(f"High order for project '{self.project}': {high_order}")
+            self.order = (high_order + 1) if high_order is not None else 1
         if self.done:
             self.order = 0
         return self.order

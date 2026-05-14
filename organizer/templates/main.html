@@ -43,72 +43,72 @@
         
         // Funkcja do aktualizacji kolejności zadań
         const changeOrder = function (arg) {
-    let listElement;
+            let listElement;
 
-    // 1. Określamy, który element wywołał funkcję
-    if (arg instanceof HTMLElement) {
-        listElement = arg;
-    } else if (arg && arg.from) {
-        listElement = arg.from;
-    } else {
-        listElement = document.getElementById('sortable-list');
-    }
+            // 1. Określamy, który element wywołał funkcję
+            if (arg instanceof HTMLElement) {
+                listElement = arg;
+            } else if (arg && arg.from) {
+                listElement = arg.from;
+            } else {
+                listElement = document.getElementById('sortable-list');
+            }
 
-    if (!listElement) return;
+            if (!listElement) return;
 
-    // 2. Jeśli to lista "Done", nie wysyłamy jej kolejności do bazy,
-    // ALE wywołujemy changeOrder ponownie dla głównej listy, aby upewnić się, że tam porządek jest OK.
-    if (listElement.id === 'sortable-list-done') {
-        console.log("Lista Done - wymuszam aktualizację głównej listy.");
-        const mainList = document.getElementById('sortable-list');
-        if (mainList) {
-            // Wywołujemy rekurencyjnie dla głównej listy, ale tylko raz
-            updateOrderOnServer(mainList);
-        }
-        return; 
-    }
-
-    // 3. Jeśli to nie była lista Done, po prostu aktualizujemy
-    updateOrderOnServer(listElement);
-};
-
-// Wydzielona funkcja pomocnicza, żeby kod był czystszy
-function updateOrderOnServer(listElement) {
-    const order = Array.from(listElement.querySelectorAll('.list-group-item'))
-                       .map(item => item.dataset.id)
-                       .filter(id => id !== undefined);
-    
-    if (order.length === 0) return;
-
-    console.log("Wysyłam nową kolejność dla:", listElement.id, order);
-
-    fetch('{% url "update_order" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify({ 'order': order })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.status === 'success') {
-            listElement.style.transition = 'background-color 0.5s';
-            listElement.style.backgroundColor = '#d4edda';
-            setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
-            const items = listElement.querySelectorAll('.list-group-item');
-            items.forEach((item, index) => {
-                const newOrder = index + 1;
-                item.dataset.order = newOrder;
-                const orderDisplay = item.querySelector('.task-order');
-                if (orderDisplay) {
-                    orderDisplay.textContent = `Order: ${newOrder}`;
+            // 2. Jeśli to lista "Done", nie wysyłamy jej kolejności do bazy,
+            // ALE wywołujemy changeOrder ponownie dla głównej listy, aby upewnić się, że tam porządek jest OK.
+            if (listElement.id === 'sortable-list-done') {
+                console.log("Lista Done - wymuszam aktualizację głównej listy.");
+                const mainList = document.getElementById('sortable-list');
+                if (mainList) {
+                    // Wywołujemy rekurencyjnie dla głównej listy, ale tylko raz
+                    updateOrderOnServer(mainList);
                 }
-            });
+                return; 
+            }
+
+            // 3. Jeśli to nie była lista Done, po prostu aktualizujemy
+            updateOrderOnServer(listElement);
+        };
+
+        // Wydzielona funkcja pomocnicza, żeby kod był czystszy
+        function updateOrderOnServer(listElement) {
+            const order = Array.from(listElement.querySelectorAll('.list-group-item'))
+                            .map(item => item.dataset.id)
+                            .filter(id => id !== undefined);
+            
+            if (order.length === 0) return;
+
+            console.log("Wysyłam nową kolejność dla:", listElement.id, order);
+
+            fetch('{% url "update_order" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ 'order': order })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    listElement.style.transition = 'background-color 0.5s';
+                    listElement.style.backgroundColor = '#d4edda';
+                    setTimeout(() => listElement.style.backgroundColor = 'transparent', 500);
+                    const items = listElement.querySelectorAll('.list-group-item');
+                    items.forEach((item, index) => {
+                        const newOrder = index + 1;
+                        item.dataset.order = newOrder;
+                        const orderDisplay = item.querySelector('.task-order');
+                        if (orderDisplay) {
+                            orderDisplay.textContent = `Order: ${newOrder}`;
+                        }
+                    });
+                }
+            })
+            .catch(error => console.error('Błąd order:', error));
         }
-    })
-    .catch(error => console.error('Błąd order:', error));
-}
         // Inicjalizacja SortableJS dla listy aktywnych zadań
         Sortable.create(el, {
             animation: 150,
@@ -199,6 +199,13 @@ function updateOrderOnServer(listElement) {
                     console.log(data.task_id);
                     // Czyszczenie formularza
                     document.querySelector('form').reset();
+                    // Ustawienie kolejności dla nowego zadania
+                    const numOrder = list.querySelectorAll('.list-group-item').length;
+                    newTaskItem.dataset.order = numOrder;
+                    const orderDisplay = newTaskItem.querySelector('.task-order');
+                    if (orderDisplay) {
+                        orderDisplay.textContent = `Order: ${numOrder}`;
+                    }
                     
                 } else {
                     console.error('Nie udało się dodać zadania.');
