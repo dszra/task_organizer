@@ -49,3 +49,13 @@ class Task(models.Model):
     
     class Meta:
         ordering = ['order']
+
+class Comment(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment on {self.task.title} at {self.created_at}"
+    
+

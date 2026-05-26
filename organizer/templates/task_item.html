@@ -24,6 +24,30 @@
         {% if not is_done %}
         <p class="task-order">Order: {{ task_order }}</p>
         {% endif %}
+        
+            <div class="task-comments">
+                <strong><span class="comment-count">Comments {{ task.comments.count }}:</span></strong>
+                <div class="comments-list" style="display: none;">
+                <ul>
+                    {% for comment in task_comments %}
+                    {% if comment.task_id == task_id %}
+                        <li>{{ comment.text }} ({{ comment.created_at }})</li>
+                    {% endif %}
+                    {% endfor %}
+                    </ul>
+                    <p>
+                        <form class="add-comment-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="task_id" value="{{ task_id }}">
+                            {{ task_com_form.text }}
+                            <button class="add-comment-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Comment</button>
+                        </form>
+                        </p>
+            </div>
+                    
+                
+            </div>
+        
         <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
         <button class="edit-task-btn" style="background-color: blue; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
         <button class="do-now-btn" style="background-color: orange; color: white; border: none; padding: 5px 10px; cursor: pointer;">Do Now</button>

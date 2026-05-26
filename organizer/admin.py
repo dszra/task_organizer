@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, Project
+from .models import Task, Project, Comment
 
 # admin.site.register(Task)
 # admin.site.register(Project)
@@ -17,3 +17,10 @@ class TaskAdmin(admin.ModelAdmin):
 class ProjectAdmin(admin.ModelAdmin):
     """Model projektu"""
     pass
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    """Model komentarza do zadania"""
+    list_display = ('task', 'text', 'created_at')
+    search_fields = ('text',)
+    readonly_fields = ('created_at',)

@@ -7,15 +7,18 @@
         .handle { cursor: grab; margin-right: 10px; padding: 5px; background: #eee; }
         .handle:active { cursor: grabbing; }
         .bg-light { background-color: #2887e6; border: 2px dashed #ccc; }
+        .task-comments { margin-top: 10px; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
     <h1>Tasks</h1>
+    <button class="expand-btn-all" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9660;</button>
+    <button class="collapse-btn-all" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9654;</button>
     
     <ul id="sortable-list" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if not task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -33,7 +36,7 @@
     <ul id="sortable-list-done" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order %}
+            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -307,22 +310,92 @@
             }
         });
 
+        // Obsługa przycisków "Expand" i "Collapse" dla pojedynczych zadań oraz globalnych
         document.addEventListener('click', function(e) {
-            const taskItem = e.target.closest('.list-group-item');
-            if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
-            if (e.target.classList.contains('expand-btn')) {
+            const target = e.target;
+
+            // 1. Obsługa przycisków pojedynczych (wymagających taskItem)
+            if (target.classList.contains('expand-btn') || target.classList.contains('collapse-btn')) {
+                const taskItem = target.closest('.list-group-item');
+                if (!taskItem) return; // Zabezpieczenie, jeśli elementu nie ma
+
                 const details = taskItem.querySelector('.task-details');
                 if (details) {
-                    details.style.display = 'block';
+                    details.style.display = target.classList.contains('expand-btn') ? 'block' : 'none';
+                }
+            } 
+            
+            // 2. Obsługa przycisków globalnych (wszystkie)
+            else if (target.classList.contains('expand-btn-all') || target.classList.contains('collapse-btn-all')) {
+                const detailsList = document.querySelectorAll('.task-details');
+                const displayStyle = target.classList.contains('expand-btn-all') ? 'block' : 'none';
+                
+                detailsList.forEach(details => details.style.display = displayStyle);
+            }
+        });
+
+        // Dodanie obsługi dodawania komentarza przez AJAX
+        document.addEventListener('submit', function(e) {
+            if (e.target && e.target.classList.contains('add-comment-form')) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const taskId = formData.get('task_id');
+                const counter = formData.get('counter');
+
+                fetch('/add_comment/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData.entries()))
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const taskItem = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
+                        if (taskItem) {
+                            const commentsList = taskItem.querySelector('.task-comments ul');
+                            if (commentsList) {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html.trim();
+                                const newCommentItem = tempDiv.querySelector('.task-comments ul li');
+                                if (newCommentItem) {
+                                    commentsList.insertAdjacentElement('beforeend', newCommentItem);
+                                    const commentCount = taskItem.querySelector('.task-comments .comment-count');
+                                    if (commentCount) {
+                                        console.log(commentCount);
+                                        const currentCount = parseInt(commentCount.textContent.match(/\d+/)[0]) || 0;
+                                        commentCount.textContent = `Comments ${currentCount + 1}:`;
+                                    }
+                                    form.reset();
+                                    console.log('Komentarz dodany!');
+                                } else {
+                                    console.error("Nie udało się znaleźć nowego komentarza w data.html");
+                                }
+                            } else {
+                                console.error("Nie udało się znaleźć listy komentarzy dla zadania ID:", data.task_id);
+                            }
+                        }
+                    } else {
+                        console.error('Nie udało się dodać komentarza.');
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
+            }
+        });
+
+        // Zwijanie i rozwijanie listy komentarzy
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('comment-count')) {
+                const commentsList = e.target.closest('.task-comments').querySelector('.comments-list');
+                if (commentsList) {
+                    commentsList.style.display = commentsList.style.display === 'none' ? 'block' : 'none';
                 }
             }
-            if (e.target.classList.contains('collapse-btn')) {
-                const details = taskItem.querySelector('.task-details');
-                if (details) {
-                    details.style.display = 'none';
-                }
-            }
-        })
+        });
+
 
     </script>
 </body>
