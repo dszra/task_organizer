@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect
-from .models import Task, Project, Comment
+from .models import Task, Project, Comment, Subtask
 from django.views.decorators.http import require_POST, require_http_methods
 from django.http import JsonResponse
 import json
-from .forms import TaskForm, CommentForm
+from .forms import TaskForm, CommentForm, SubtaskForm
 from django.forms import modelformset_factory
 from django.template.loader import render_to_string
 from django.db.models import Count
@@ -20,11 +20,15 @@ def main_view(request):
     """
     tasks = Task.objects.all().order_by('order')
     comments = Comment.objects.all().order_by('created_at').annotate(comment_count=Count('task_id'))
+    subtasks = Subtask.objects.all().order_by('id')
+
 
     if request.method == 'POST':
         form = TaskForm(request.POST)
         com_form = CommentForm(request.POST)
-        if form.is_valid():
+        sub_form = SubtaskForm(request.POST)
+
+        if 'add-task' in request.POST and form.is_valid():
             task = form.save()
             html = render_to_string('task_item.html', {
                 'task_id': task.id,
@@ -32,10 +36,12 @@ def main_view(request):
                 'task_description': task.description,
                 'task_project': task.project,
                 'is_done': task.done,
-                'task_comments': comments
+                'task_comments': comments,
+                'subtask_count': task.subtasks.count(),
+                'task_subtasks': subtasks
             })
             return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
-        if com_form.is_valid():
+        if 'add-comment' in request.POST and com_form.is_valid():
             print("Comment form is valid")
             comment = com_form.save(commit=False)
             task_id = request.POST.get('task_id')
@@ -53,13 +59,22 @@ def main_view(request):
                 'task_order': comment.task.order
             })
             return JsonResponse({'status': 'success', 'html': html, 'task_id': comment.task.id})
+        
+        if 'add-subtask' in request.POST and sub_form.is_valid():
+            subtask = sub_form.save(commit=False)
+            task_id = request.POST.get('task_id')
+            print(f"Received subtask for task ID: {task_id}")
+            subtask.parent_task_id = task_id
+            subtask.save()
+            return redirect('/')
 
             
     else:
         com_form = CommentForm()
         form = TaskForm()
+        sub_form = SubtaskForm()
 
-    return render(request, "main.html", {"tasks": tasks, "form": form, "comments": comments, "com_form": com_form})
+    return render(request, "main.html", {"tasks": tasks, "form": form, "comments": comments, "com_form": com_form, "subtasks": subtasks, "sub_form": sub_form})
 
 
 @require_POST
@@ -104,14 +119,22 @@ def update_task_status(request, task_id):
         task.done = done_status
 
         task.save()
+        
         html = render_to_string('task_item.html', {
             'task_id': task.id,
             'task_title': task.title,
             'task_description': task.description,
             'is_done': task.done,
             'task_end_date': task.end_date,
-            'task_comments': Comment.objects.filter(task=task).order_by('created_at')
+            'task_comments': Comment.objects.filter(task=task).order_by('created_at'),
+            'task_subtasks': Subtask.objects.filter(parent_task=task).order_by('id'),
+            'task_order': task.order,
+            'task_project': task.project,
+            'comments_count': task.comments.count(),
+            'subtask_count': task.subtasks.count(),
+            'task_com_form': CommentForm()
         })
+        
 
         return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
     except Exception as e:
@@ -169,7 +192,8 @@ def edit_task(request, task_id):
             'task_end_date': task.end_date,
             'task_project': task.project,
             'task_comments': Comment.objects.filter(task=task).order_by('-created_at'),
-            'task_order': task.order
+            'task_order': task.order,
+            'task_subtasks': Subtask.objects.filter(task=task)
         })
 
         return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
@@ -199,5 +223,67 @@ def add_comment(request):
         })
 
         return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+@require_POST
+def subtask_done(request, subtask_id):
+    """View to update the 'done' status of a subtask based on the received JSON data.
+    Expects a JSON payload with the new status, e.g.:
+    {
+        "done": true
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        done_status = data.get('done')
+
+        subtask = Subtask.objects.get(id=subtask_id)
+        subtask.done = done_status
+        subtask.save()
+        
+
+        return JsonResponse({'status': 'success', "subtask_end_date": subtask.end_date})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+@require_POST
+def add_subtask(request):
+    """View to add a subtask to a task based on the received JSON data.
+    Expects a JSON payload with the subtask title and parent task ID, e.g.:
+    {
+        "title": "Subtask Title",
+        "task_id": 1
+    }
+    """
+    try:
+        print("Received request to add subtask")
+        data = json.loads(request.body)
+        title = data.get('title')
+        description = data.get('description', '')
+        task_id = data.get('task_id')
+        print(f"Adding subtask with title: {title} to parent task ID: {task_id}")
+        task = Task.objects.get(id=task_id)
+        print(f"Found parent task with ID: {task_id} for subtask")
+        subtask = Subtask.objects.create(title=title, description=description, task=task)
+        print(f"Created subtask with ID: {subtask.id} for parent task ID: {task_id}")
+        html = render_to_string('task_item.html', {
+            'task_id': task.id,
+            'task_subtasks': Subtask.objects.filter(task=task).order_by('id'),
+        })
+
+        return JsonResponse({'status': 'success', 'html': html, 'task_id': task_id})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    
+@require_http_methods(["DELETE"])
+def delete_subtask(request, subtask_id):
+    """View to delete a subtask based on the received subtask ID.
+    Expects a DELETE request with the subtask ID in the URL.
+    """
+    try:
+        subtask = Subtask.objects.get(id=subtask_id)
+        subtask.delete()
+        return JsonResponse({'status': 'success', "task_id": subtask.task.id})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)

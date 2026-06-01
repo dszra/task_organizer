@@ -41,7 +41,7 @@ class Task(models.Model):
     
     def save(self, *args, **kwargs):
         self.order = self.order_num()
-        self.update = self.update_end_date()
+        self.update_end = self.update_end_date()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -57,5 +57,25 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment on {self.task.title} at {self.created_at}"
+    
+class Subtask(models.Model):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='subtasks')
+    title = models.CharField(max_length=300, help_text="Title of the subtask")
+    description = models.TextField(null=True, blank=True)
+    done = models.BooleanField(default=False)
+    end_date = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+    
+    def update_end_date(self):
+        if self.done and not self.end_date:
+            self.end_date = timezone.now()
+        elif not self.done:
+            self.end_date = None
+    
+    def save(self, *args, **kwargs):
+        self.update_end_date()
+        super().save(*args, **kwargs)
     
 

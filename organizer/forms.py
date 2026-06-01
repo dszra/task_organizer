@@ -1,4 +1,4 @@
-from .models import Task, Comment
+from .models import Task, Comment, Subtask
 from django.shortcuts import render, redirect
 from django import forms
 
@@ -16,4 +16,12 @@ class CommentForm(forms.ModelForm):
         fields = ['text']
         widgets = {
             'text': forms.Textarea(attrs={'rows': 2, 'cols': 40, 'placeholder': 'Add a commentt...'}),
+        }
+
+class SubtaskForm(forms.ModelForm):
+    class Meta:
+        model = Subtask
+        fields = ['title', 'description', 'done']
+        widgets = {
+            'done': forms.CheckboxInput(attrs={'class': 'subtask-done-checkbox'}),
         }

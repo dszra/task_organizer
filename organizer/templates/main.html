@@ -8,6 +8,17 @@
         .handle:active { cursor: grabbing; }
         .bg-light { background-color: #2887e6; border: 2px dashed #ccc; }
         .task-comments { margin-top: 10px; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd; }
+        .task-title { margin-left: 10px; padding: 5px; background-color: antiquewhite;}
+        .task-done { margin-left: 10px; background-color: violet;}
+        .task-order { margin-left: 10px; font-size: 12px; color: #555; }
+        .edit-task-btn, .delete-task-btn, .do-now-btn { margin-left: 10px; padding: 5px 10px; border: none; cursor: pointer; }
+        .edit-task-btn { background-color: #007bff; color: white; }
+        .delete-task-btn { background-color: #dc3545; color: white; }
+        .do-now-btn { background-color: #28a745; color: white; }
+        .expand-btn, .collapse-btn { margin-left: 10px; padding: 5px; border: none; cursor: pointer; font-size: 16px; }
+        .task-edit { display: none; margin-top: 10px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; }
+        .edit-task-form input, .edit-task-form textarea, .edit-task-form select { display: block; width: 100%; margin-bottom: 10px; padding: 5px; }
+        .task-end-date { margin-left: 10px; font-size: 12px; color: #555; }
     </style>
 </head>
 <body>
@@ -18,7 +29,7 @@
     <ul id="sortable-list" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if not task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form %}
+            {% include 'task_item.html' with task=task task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form task_subtasks=subtasks comments_count=task.comments.count subtask_count=task.subtasks.count sub_form=sub_form  %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -29,14 +40,14 @@
     <br>Title: {{ form.title }}
     <br>Description: {{ form.description }}
     <br>Project: {{ form.project }}
-    <br><button type="submit" id="add-task-btn">Add Task</button>
+    <br><button type="submit" id="add-task-btn" name="add-task">Add Task</button>
     </form>
 
     <h1>Done Tasks</h1>
     <ul id="sortable-list-done" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if task.done %}
-            {% include 'task_item.html' with task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form %}
+            {% include 'task_item.html' with task=task task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form task_subtasks=subtasks comments_count=task.comments.count subtask_count=task.subtasks.count %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -114,6 +125,7 @@
             })
             .catch(error => console.error('Błąd order:', error));
         }
+
         // Inicjalizacja SortableJS dla listy aktywnych zadań
         Sortable.create(el, {
             animation: 150,
@@ -156,7 +168,7 @@
                         console.error("Nie udało się utworzyć elementu z data.html");
                         return;
                     }
-
+                    
                     // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był (to zachowa event listener dla checkboxa)
                     taskItem.replaceWith(updatedTaskItem);
 
@@ -334,8 +346,9 @@
             }
         });
 
-        // Dodanie obsługi dodawania komentarza przez AJAX
+        
         document.addEventListener('submit', function(e) {
+            // Dodanie obsługi dodawania komentarza przez AJAX
             if (e.target && e.target.classList.contains('add-comment-form')) {
                 e.preventDefault();
                 const form = e.target;
@@ -361,9 +374,11 @@
                                 const tempDiv = document.createElement('div');
                                 tempDiv.innerHTML = data.html.trim();
                                 const newCommentItem = tempDiv.querySelector('.task-comments ul li');
+                                console.log("komentarz dane ", newCommentItem)
                                 if (newCommentItem) {
                                     commentsList.insertAdjacentElement('beforeend', newCommentItem);
                                     const commentCount = taskItem.querySelector('.task-comments .comment-count');
+                                    console.log(data.html)
                                     if (commentCount) {
                                         console.log(commentCount);
                                         const currentCount = parseInt(commentCount.textContent.match(/\d+/)[0]) || 0;
@@ -384,6 +399,62 @@
                 })
                 .catch(error => console.error('Błąd:', error));
             }
+
+            // Dodanie obsługi dodawania podzadania przez AJAX
+            if (e.target && e.target.classList.contains('add-subtask-form')) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const taskId = formData.get('task_id');
+                fetch('/add_subtask/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify(Object.fromEntries(formData.entries()))
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const subtaskItem = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
+                        if (subtaskItem) {
+                            const subtasksList = subtaskItem.querySelector('.subtasks-list ul');
+                            if (subtasksList) {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = data.html.trim();
+                                const allSubtask = tempDiv.querySelectorAll('.subtasks-list ul li');
+                                const newSubtaskItem = allSubtask[allSubtask.length - 1]; // Pobieramy ostatni element, który powinien być nowym podzadaniem
+                                if (newSubtaskItem) {
+                                    subtasksList.insertAdjacentElement('beforeend', newSubtaskItem);
+                                    const subtaskCount = subtaskItem.querySelector('.subtask-view strong');
+                                    if (subtaskCount) {
+                                        const currentCount = parseInt(subtaskCount.textContent.match(/\d+/)[0]) || 0;
+                                        subtaskCount.textContent = `Subtasks ${currentCount + 1}`;
+                                    }
+                                    form.reset();
+                                    const subtaskFormContainer = form.closest('.add-subtask-form-container');
+                                    if (subtaskFormContainer) {
+                                        subtaskFormContainer.style.display = 'none';
+                                        const subtasksListContainer = subtaskFormContainer.closest('.subtask-view').querySelector('.subtasks-list');
+                                        if (subtasksListContainer) {
+                                            subtasksListContainer.style.display = 'block';
+                                        }
+                                    }
+                                } else {
+                                    console.error("Nie udało się znaleźć nowego podzadania w data.html");
+                                }
+                            } else {
+                                console.error("Nie udało się znaleźć listy podzadań dla zadania ID:", data.task_id);
+                            }
+                        }
+                    } else {
+                        console.error('Nie udało się dodać podzadania.');
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
+            }
+
         });
 
         // Zwijanie i rozwijanie listy komentarzy
@@ -395,6 +466,122 @@
                 }
             }
         });
+
+        // Zwijanie i rozwijanie listy podzadań i ich opisów
+        document.addEventListener('click', function(e) {
+                const titleSpan = e.target.closest('.subtask-title');
+                if (titleSpan) {
+                    const subtaskItem = titleSpan.closest('li').querySelector('.sub-description');
+                    if (subtaskItem) {
+                        subtaskItem.style.display = subtaskItem.style.display === 'none' ? 'block' : 'none';
+                    }
+                }
+
+                const newSubtaskBtn = e.target.closest('.new-subtasks-btn');
+                if (newSubtaskBtn) {
+                    const subtaskList = newSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
+                    const subtaskForm = newSubtaskBtn.closest('.subtask-view').querySelector('.add-subtask-form-container');
+                    if (subtaskList) {
+                        subtaskList.style.display = subtaskList.style.display === 'none' ? 'block' : 'none';
+                        if (subtaskForm) {
+                            subtaskForm.style.display = subtaskForm.style.display === 'none' ? 'block' : 'none';
+                        }
+                    }
+                }
+
+                const cancelSubtaskBtn = e.target.closest('.cancel-add-subtask-btn');
+                if (cancelSubtaskBtn) {
+                    const subtaskForm = cancelSubtaskBtn.closest('.add-subtask-form-container');
+                    if (subtaskForm) {
+                        subtaskForm.style.display = 'none';
+                        const subtaskList = cancelSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
+                        if (subtaskList) {
+                            subtaskList.style.display = 'block';
+                        }
+                        const form = subtaskForm.querySelector('.add-subtask-form');
+                        if (form) {
+                            form.reset();
+                        }
+                    }
+                }
+
+                const deleteSubtaskBtn = e.target.closest('.delete-subtask-btn');
+                if (deleteSubtaskBtn) {
+                    const subtaskItem = deleteSubtaskBtn.closest('li');
+                    const subtaskId = subtaskItem.dataset.subtaskId;
+                    if (confirm('Czy na pewno chcesz usunąć to podzadanie?')) {
+                        fetch(`/delete_subtask/${subtaskId}/`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                subtaskItem.remove();
+                                const subtaskItemList = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
+                                const subtaskCount = subtaskItemList.querySelector('.subtask-view strong');
+                                console.log("Subtask count element:", subtaskCount);
+                                if (subtaskCount) {
+                                    const currentCount = parseInt(subtaskCount.textContent.match(/\d+/)[0]) || 0;
+                                    subtaskCount.textContent = `Subtasks ${currentCount - 1}`;
+                                }
+                                console.log('Podzadanie usunięte!');
+                            } else {
+                                console.error('Nie udało się usunąć podzadania.');
+                            }
+                        })
+                        .catch(error => console.error('Błąd:', error));
+                    }
+                }
+            
+        });
+
+        // Oznaczenie subtasków jako zrobione/niezrobione
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('subtask-done-checkbox')) {
+                const checkbox = e.target;
+                const subtaskItem = checkbox.closest('li');
+                console.log("Subtask checkbox changed for subtask item:", subtaskItem);
+                const subtaskId = subtaskItem.dataset.subtaskId;
+                console.log("Subtask ID:", subtaskId);
+                const doneStatus = checkbox.checked;
+                const notDoneStatus = !doneStatus;
+
+                fetch(`/update_subtask_status/${subtaskId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ 'done': doneStatus, 'subtask_id': subtaskId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        console.log('Podzadanie zaktualizowane!');
+                            // Opcjonalnie możemy dodać jakieś wizualne oznaczenie, np. przekreślenie tekstu
+                            const updatedSubtaskItem = document.querySelector(`li[data-subtask-id="${subtaskId}"]`);
+                            if (updatedSubtaskItem) {
+                                const titleElement = updatedSubtaskItem.querySelector('span');
+                                if (titleElement) {
+                                    titleElement.style.textDecoration = doneStatus ? 'line-through' : 'none';
+                                }
+                            }  
+                    } else {
+                        console.error('Nie udało się zaktualizować podzadania.');
+                        checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd:', error);
+                    checkbox.checked = !doneStatus;
+                });
+            }
+        });
+
+        
 
 
     </script>

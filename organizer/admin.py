@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Task, Project, Comment
+from .models import Task, Project, Comment, Subtask
 
 # admin.site.register(Task)
 # admin.site.register(Project)
@@ -24,3 +24,10 @@ class CommentAdmin(admin.ModelAdmin):
     list_display = ('task', 'text', 'created_at')
     search_fields = ('text',)
     readonly_fields = ('created_at',)
+
+@admin.register(Subtask)
+class SubtaskAdmin(admin.ModelAdmin):
+    """Model podzadania związanego z zadaniem"""
+    list_display = ('task', 'title', 'done')
+    list_filter = ('done',)
+    search_fields = ('title', 'description')
