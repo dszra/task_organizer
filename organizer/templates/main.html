@@ -29,7 +29,7 @@
     <ul id="sortable-list" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if not task.done %}
-            {% include 'task_item.html' with task=task task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form task_subtasks=subtasks comments_count=task.comments.count subtask_count=task.subtasks.count sub_form=sub_form  %}
+            {% include 'task_item.html' with task=task comments=comments com_form=com_form subtasks=subtasks sub_form=sub_form  %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -47,17 +47,19 @@
     <ul id="sortable-list-done" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if task.done %}
-            {% include 'task_item.html' with task=task task_id=task.id task_title=task.title task_description=task.description is_done=task.done task_end_date=task.end_date task_project=task.project task_order=task.order task_comments=comments task_com_form=com_form task_subtasks=subtasks comments_count=task.comments.count subtask_count=task.subtasks.count %}
+            {% include 'task_item.html' with task=task comments=comments com_form=com_form subtasks=subtasks comments_count=task.comments.count subtask_count=task.subtasks.count %}
             {% endif %}
         {% endfor %}
     </ul>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
+        // Tasks functionality
+        // Task order change
         const el = document.getElementById('sortable-list');
         const elDone = document.getElementById('sortable-list-done');
         
-        // Funkcja do aktualizacji kolejności zadań
+        // Function to handle order change for both lists, with special logic for the "Done" list
         const changeOrder = function (arg) {
             let listElement;
 
@@ -88,7 +90,7 @@
             updateOrderOnServer(listElement);
         };
 
-        // Wydzielona funkcja pomocnicza, żeby kod był czystszy
+        // Function to send the new order to the server and update the order display
         function updateOrderOnServer(listElement) {
             const order = Array.from(listElement.querySelectorAll('.list-group-item'))
                             .map(item => item.dataset.id)
@@ -126,7 +128,7 @@
             .catch(error => console.error('Błąd order:', error));
         }
 
-        // Inicjalizacja SortableJS dla listy aktywnych zadań
+        // Sortable initialization
         Sortable.create(el, {
             animation: 150,
             handle: '.handle',
@@ -134,150 +136,134 @@
             onEnd: changeOrder
         });
 
-        // Zmiana statusu zadania (done/undone) po kliknięciu checkboxa, przenoszenie między listami, zmiana wartości pola order
-        document.addEventListener('change', function(event) {
-            // Sprawdzamy, czy kliknięty element to nasz checkbox
-            if (event.target && event.target.classList.contains('task-done-checkbox')) {
-                const checkbox = event.target;
-                const taskItem = checkbox.closest('.list-group-item');
-                const taskId = taskItem.dataset.id;
-                const doneStatus = checkbox.checked;
+        // Function to handle task status change and move between lists
+        function changeTaskDone(target) {
+            const checkbox = target.closest('.task-done-checkbox');
+            const taskItem = checkbox.closest('.list-group-item');
+            const taskId = taskItem.dataset.id;
+            const doneStatus = checkbox.checked;
 
-                const activeList = document.getElementById('sortable-list');
-                const doneList = document.getElementById('sortable-list-done');
+            const activeList = document.getElementById('sortable-list');
+            const doneList = document.getElementById('sortable-list-done');
 
-                fetch(`/update_task_status/${taskId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({ 'done': doneStatus })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                    // 1. Wybieramy listę docelową
-                    const targetList = doneStatus ? doneList : activeList;
-
-                    // 2. Tworzymy nowy element zadania z HTML otrzymanego z serwera
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data.html.trim();
-                    const updatedTaskItem = tempDiv.firstElementChild;
-                    if (!updatedTaskItem) {
-                        console.error("Nie udało się utworzyć elementu z data.html");
-                        return;
-                    }
-                    
-                    // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był (to zachowa event listener dla checkboxa)
-                    taskItem.replaceWith(updatedTaskItem);
-
-                    // 4. Jeśli status się zmienił, musimy upewnić się, że nowy element 
-                    // wylądował w poprawnej sekcji (Done vs Active)
-                    targetList.appendChild(updatedTaskItem);
-
-                    console.log('Zadanie zaktualizowane i przeniesione!');
-                    changeOrder(targetList);
-                    } else {
-                        console.error('Błąd serwera');
-                        checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
-                    }
-                })
-                .catch(error => {
-                    console.error('Błąd:', error);
-                    checkbox.checked = !doneStatus;
-                });
-            }
-        });
-
-        // Obsługa dodawania nowego zadania przez AJAX
-        const addTaskButton = document.getElementById('add-task-btn');
-        addTaskButton.addEventListener('click', function(event) {
-            event.preventDefault(); // Zapobiega domyślnemu zachowaniu przycisku
-            const formData = new FormData(document.querySelector('#add-task-form'));
-
-            fetch('', {
+            fetch(`/update_task_status/${taskId}/`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: new URLSearchParams(formData)
+                body: JSON.stringify({ 'done': doneStatus })
             })
             .then(response => response.json())
             .then(data => {
+                console.log("Odpowiedź z serwera dla zmiany statusu zadania:", data);
                 if (data.status === 'success') {
-                    const list  = document.getElementById('sortable-list');
+                // 1. Wybieramy listę docelową
+                const targetList = doneStatus ? doneList : activeList;
+
+                // 2. Tworzymy nowy element zadania z HTML otrzymanego z serwera
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.html.trim();
+                const updatedTaskItem = tempDiv.firstElementChild;
+                if (!updatedTaskItem) {
+                    console.error("Nie udało się utworzyć elementu z data.html");
+                    return;
+                }
+                
+                // 3. Podmieniamy stary element na nowy bezpośrednio w miejscu, gdzie był (to zachowa event listener dla checkboxa)
+                taskItem.replaceWith(updatedTaskItem);
+
+                // 4. Jeśli status się zmienił, musimy upewnić się, że nowy element 
+                // wylądował w poprawnej sekcji (Done vs Active)
+                targetList.appendChild(updatedTaskItem);
+
+                console.log('Zadanie zaktualizowane i przeniesione!');
+                changeOrder(targetList);
+                } else {
+                    console.error('Błąd serwera');
+                    checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
+                }
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                checkbox.checked = !doneStatus;
+            });
+        };
+
+        // Function to handle adding a new task
+        function addTask(target) {
+            const addTaskButton = target.closest('#add-task-btn');
+            const formData = new FormData(document.querySelector('#add-task-form'));
+            fetch('/add_task/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(Object.fromEntries(formData.entries()))
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log("Odpowiedź z serwera dla dodawania zadania:", data);
+                if (data.status === 'success') {
                     const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data.html;
+                    tempDiv.innerHTML = data.html.trim();
                     const newTaskItem = tempDiv.firstElementChild;
-                    list.appendChild(newTaskItem);
-                    console.log('Zadanie dodane!');
-                    console.log(data.task_id);
-                    // Czyszczenie formularza
-                    document.querySelector('#add-task-form').reset();
-                    // Ustawienie kolejności dla nowego zadania
-                    const numOrder = list.querySelectorAll('.list-group-item').length;
-                    newTaskItem.dataset.order = numOrder;
-                    const orderDisplay = newTaskItem.querySelector('.task-order');
-                    if (orderDisplay) {
-                        orderDisplay.textContent = `Order: ${numOrder}`;
+                    if (newTaskItem) {
+                        document.getElementById('sortable-list').appendChild(newTaskItem);
+                        document.querySelector('#add-task-form').reset();
+                        console.log('Zadanie dodane!');
+                    } else {
+                        console.error("Nie udało się znaleźć nowego zadania w data.html");
                     }
-                    
                 } else {
                     console.error('Nie udało się dodać zadania.');
                 }
             })
-            .catch(error => console.error('Błąd:', error));
-        });
+        }
 
-        // Obsługa usuwania zadania przez AJAX
-        document.addEventListener('click', function(event) {
-            if (event.target && event.target.classList.contains('delete-task-btn')) {
-                const deleteButton = event.target;
-                const taskItem = deleteButton.closest('.list-group-item');
-                const taskId = taskItem.dataset.id;
-                if (confirm('Czy na pewno chcesz usunąć to zadanie?')) {
-                    fetch(`/delete_task/${taskId}/`, {
-                        method: 'DELETE',
-                        headers: {
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.status === 'success') {
-                            taskItem.remove();
-                            changeOrder(); // Aktualizacja kolejności po usunięciu
-                            console.log('Zadanie usunięte!');
-                        } else {
-                            console.error('Nie udało się usunąć zadania.');
-                        }
-                    })
-                    .catch(error => console.error('Błąd:', error));
-                }
+        // Function to handle task deletion
+        function delTask(target) {
+            const deleteButton = target.closest('.delete-task-btn');
+            if (!deleteButton) return;
+            const taskItem = deleteButton.closest('.list-group-item');
+            const taskId = taskItem.dataset.id;
+            if (confirm('Czy na pewno chcesz usunąć to zadanie?')) {
+                fetch(`/delete_task/${taskId}/`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        taskItem.remove();
+                        changeOrder(); // Aktualizacja kolejności po usunięciu
+                        console.log('Zadanie usunięte!');
+                    } else {
+                        console.error('Nie udało się usunąć zadania.');
+                    }
+                })
+                .catch(error => console.error('Błąd:', error));
             }
-        });
+        }        
 
-        // Obsługa edycji zadania przez AJAX
-        document.addEventListener('click', function(e) {
-            const taskItem = e.target.closest('.list-group-item');
-            if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
+        // Function to handle task editing
+        function editTaskBtn(target) {
+            const taskItem = target.closest('.list-group-item');
+            if (!taskItem) return;
             const taskView = taskItem.querySelector('.task-view');
             const taskEdit = taskItem.querySelector('.task-edit');
-
-            // Obsługa przycisku "Edit"
-            if (e.target.classList.contains('edit-task-btn')) {
+            if (target.classList.contains('edit-task-btn')) {
                 taskView.style.display = 'none';
                 taskEdit.style.display = 'block';
-            }
-            // Obsługa przycisku "Cancel"
-            if (e.target.classList.contains('cancel-edit-btn')) {
+            };
+            if (target.classList.contains('cancel-edit-btn')) {
                 taskEdit.style.display = 'none';
                 taskView.style.display = 'block';
-            }
-            // Obsługa formularza edycji
-            if (e.target.classList.contains('save-edit-btn')) {
+            };
+            if (target.classList.contains('save-edit-btn')) {
                 const form = taskEdit.querySelector('.edit-task-form');
                 const formData = new FormData(form);
                 const taskId = taskItem.dataset.id;
@@ -308,104 +294,107 @@
                 })
                 .catch(error => console.error('Błąd:', error));
             }
-        });
+        }
 
-        // Obsługa przycisku "Do Now" - przenoszenie zadania na początek listy
-        document.addEventListener('click', function(e) {
-            const taskItem = e.target.closest('.list-group-item');
+        // Function to move task to top of the list
+        function doNowBtn(target) {
+            const taskItem = target.closest('.list-group-item');
             if (!taskItem) return; // Jeśli kliknięto poza zadaniem, ignorujemy
-            if (e.target.classList.contains('do-now-btn')) {
-                console.log("Do Now clicked for task ID:", taskItem.dataset.id);
-                const list = document.getElementById('sortable-list');
-                list.prepend(taskItem);
-                changeOrder(list);
-            }
-        });
+            console.log("Do Now clicked for task ID:", taskItem.dataset.id);
+            const list = document.getElementById('sortable-list');
+            list.prepend(taskItem);
+            changeOrder(list);
+        }
 
-        // Obsługa przycisków "Expand" i "Collapse" dla pojedynczych zadań oraz globalnych
-        document.addEventListener('click', function(e) {
-            const target = e.target;
-
-            // 1. Obsługa przycisków pojedynczych (wymagających taskItem)
-            if (target.classList.contains('expand-btn') || target.classList.contains('collapse-btn')) {
-                const taskItem = target.closest('.list-group-item');
-                if (!taskItem) return; // Zabezpieczenie, jeśli elementu nie ma
-
-                const details = taskItem.querySelector('.task-details');
-                if (details) {
-                    details.style.display = target.classList.contains('expand-btn') ? 'block' : 'none';
-                }
-            } 
+        // Function to toggle all tasks details
+        function toggleAllTasksDetalis(target) {
+            const detailsList = document.querySelectorAll('.task-details');
+            const displayStyle = target.classList.contains('expand-btn-all') ? 'block' : 'none';
             
-            // 2. Obsługa przycisków globalnych (wszystkie)
-            else if (target.classList.contains('expand-btn-all') || target.classList.contains('collapse-btn-all')) {
-                const detailsList = document.querySelectorAll('.task-details');
-                const displayStyle = target.classList.contains('expand-btn-all') ? 'block' : 'none';
-                
-                detailsList.forEach(details => details.style.display = displayStyle);
+            detailsList.forEach(details => details.style.display = displayStyle);
+         }
+
+         // Function to toggle task details
+        function toggleTaskDetails(target) {
+            const taskItem = target.closest('.list-group-item');
+            if (!taskItem) return;
+
+            const details = taskItem.querySelector('.task-details');
+            if (details) {
+                details.style.display = details.style.display === 'none' ? 'block' : 'none';
             }
-        });
+        }
 
-        
-        document.addEventListener('submit', function(e) {
-            // Dodanie obsługi dodawania komentarza przez AJAX
-            if (e.target && e.target.classList.contains('add-comment-form')) {
-                e.preventDefault();
-                const form = e.target;
-                const formData = new FormData(form);
-                const taskId = formData.get('task_id');
-                const counter = formData.get('counter');
+        // Comment functionality
+        // Function to handle adding a new comment
+        function addComment(target) {
+            const form = target.closest('.add-comment-form');
+            if (!form) return;
+            const formData = new FormData(form);
+            const taskId = formData.get('task.id');
 
-                fetch('/add_comment/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify(Object.fromEntries(formData.entries()))
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        const taskItem = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
-                        if (taskItem) {
-                            const commentsList = taskItem.querySelector('.task-comments ul');
-                            if (commentsList) {
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = data.html.trim();
-                                const newCommentItem = tempDiv.querySelector('.task-comments ul li');
-                                console.log("komentarz dane ", newCommentItem)
-                                if (newCommentItem) {
-                                    commentsList.insertAdjacentElement('beforeend', newCommentItem);
-                                    const commentCount = taskItem.querySelector('.task-comments .comment-count');
-                                    console.log(data.html)
-                                    if (commentCount) {
-                                        console.log(commentCount);
-                                        const currentCount = parseInt(commentCount.textContent.match(/\d+/)[0]) || 0;
-                                        commentCount.textContent = `Comments ${currentCount + 1}:`;
-                                    }
-                                    form.reset();
-                                    console.log('Komentarz dodany!');
-                                } else {
-                                    console.error("Nie udało się znaleźć nowego komentarza w data.html");
+            fetch('/add_comment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(Object.fromEntries(formData.entries()))
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const taskItem = document.querySelector(`.list-group-item[data-id="${data['task.id']}"]`);
+                    if (taskItem) {
+                        const commentsList = taskItem.querySelector('.task-comments ul');
+                        if (commentsList) {
+                            const tempDiv = document.createElement('div');
+                            console.log("temp div ", tempDiv)
+                            console.log("data html ", data.html)
+                            tempDiv.innerHTML = data.html.trim();
+                            const newCommentItem = tempDiv.firstElementChild;
+                            console.log("komentarz dane ", newCommentItem)
+                            if (newCommentItem) {
+                                commentsList.insertAdjacentElement('beforeend', newCommentItem);
+                                const commentCount = taskItem.querySelector('.task-comments .comment-count');
+                                console.log(data.html)
+                                if (commentCount) {
+                                    console.log(commentCount);
+                                    const currentCount = parseInt(commentCount.textContent.match(/\d+/)[0]) || 0;
+                                    commentCount.textContent = `Comments ${currentCount + 1}:`;
                                 }
+                                form.reset();
+                                console.log('Komentarz dodany!');
                             } else {
-                                console.error("Nie udało się znaleźć listy komentarzy dla zadania ID:", data.task_id);
+                                console.error("Nie udało się znaleźć nowego komentarza w data.html");
                             }
+                        } else {
+                            console.error("Nie udało się znaleźć listy komentarzy dla zadania ID:", data['task.id']);
                         }
-                    } else {
-                        console.error('Nie udało się dodać komentarza.');
                     }
-                })
-                .catch(error => console.error('Błąd:', error));
-            }
+                } else {
+                    console.error('Nie udało się dodać komentarza.');
+                }
+            })
+            .catch(error => console.error('Błąd:', error));
+        }
 
-            // Dodanie obsługi dodawania podzadania przez AJAX
-            if (e.target && e.target.classList.contains('add-subtask-form')) {
-                e.preventDefault();
-                const form = e.target;
+        // Function to toggle comments visibility
+        function toggleComments(target) {
+            if (target.classList.contains('comment-count')) {
+                const commentsList = target.closest('.task-comments').querySelector('.comments-list');
+                if (commentsList) {
+                    commentsList.style.display = commentsList.style.display === 'none' ? 'block' : 'none';
+                }
+            }
+        }
+        
+        // Subtask functionality
+        // Function to handle adding a new subtask
+        function addSubtask(target) {
+            const form = target.closest('.add-subtask-form');
                 const formData = new FormData(form);
-                const taskId = formData.get('task_id');
+                const taskId = formData.get('task.id');
                 fetch('/add_subtask/', {
                     method: 'POST',
                     headers: {
@@ -416,15 +405,21 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    console.log("Odpowiedź z serwera dla dodawania podzadania:", data);
                     if (data.status === 'success') {
-                        const subtaskItem = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
+                        const subtaskItem = document.querySelector(`.list-group-item[data-id="${data['task.id']}"]`);
+                        console.log("subtask dane ", data['task.id'])
+                        console.log("subtask item ", subtaskItem)
                         if (subtaskItem) {
                             const subtasksList = subtaskItem.querySelector('.subtasks-list ul');
+                            console.log("subtask lista ", subtasksList)
                             if (subtasksList) {
                                 const tempDiv = document.createElement('div');
+                                console.log("temp div ", tempDiv)
+                                console.log("data html ", data.html)
                                 tempDiv.innerHTML = data.html.trim();
-                                const allSubtask = tempDiv.querySelectorAll('.subtasks-list ul li');
-                                const newSubtaskItem = allSubtask[allSubtask.length - 1]; // Pobieramy ostatni element, który powinien być nowym podzadaniem
+                                const newSubtaskItem = tempDiv.firstElementChild;
+                                console.log("subtask item ", newSubtaskItem)
                                 if (newSubtaskItem) {
                                     subtasksList.insertAdjacentElement('beforeend', newSubtaskItem);
                                     const subtaskCount = subtaskItem.querySelector('.subtask-view strong');
@@ -445,7 +440,7 @@
                                     console.error("Nie udało się znaleźć nowego podzadania w data.html");
                                 }
                             } else {
-                                console.error("Nie udało się znaleźć listy podzadań dla zadania ID:", data.task_id);
+                                console.error("Nie udało się znaleźć listy podzadań dla zadania ID:", data['task.id']);
                             }
                         }
                     } else {
@@ -453,136 +448,186 @@
                     }
                 })
                 .catch(error => console.error('Błąd:', error));
-            }
 
-        });
-
-        // Zwijanie i rozwijanie listy komentarzy
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('comment-count')) {
-                const commentsList = e.target.closest('.task-comments').querySelector('.comments-list');
-                if (commentsList) {
-                    commentsList.style.display = commentsList.style.display === 'none' ? 'block' : 'none';
-                }
-            }
-        });
-
-        // Zwijanie i rozwijanie listy podzadań i ich opisów
-        document.addEventListener('click', function(e) {
-                const titleSpan = e.target.closest('.subtask-title');
-                if (titleSpan) {
-                    const subtaskItem = titleSpan.closest('li').querySelector('.sub-description');
-                    if (subtaskItem) {
-                        subtaskItem.style.display = subtaskItem.style.display === 'none' ? 'block' : 'none';
-                    }
-                }
-
-                const newSubtaskBtn = e.target.closest('.new-subtasks-btn');
-                if (newSubtaskBtn) {
-                    const subtaskList = newSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
-                    const subtaskForm = newSubtaskBtn.closest('.subtask-view').querySelector('.add-subtask-form-container');
-                    if (subtaskList) {
-                        subtaskList.style.display = subtaskList.style.display === 'none' ? 'block' : 'none';
-                        if (subtaskForm) {
-                            subtaskForm.style.display = subtaskForm.style.display === 'none' ? 'block' : 'none';
-                        }
-                    }
-                }
-
-                const cancelSubtaskBtn = e.target.closest('.cancel-add-subtask-btn');
-                if (cancelSubtaskBtn) {
-                    const subtaskForm = cancelSubtaskBtn.closest('.add-subtask-form-container');
-                    if (subtaskForm) {
-                        subtaskForm.style.display = 'none';
-                        const subtaskList = cancelSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
-                        if (subtaskList) {
-                            subtaskList.style.display = 'block';
-                        }
-                        const form = subtaskForm.querySelector('.add-subtask-form');
-                        if (form) {
-                            form.reset();
-                        }
-                    }
-                }
-
-                const deleteSubtaskBtn = e.target.closest('.delete-subtask-btn');
-                if (deleteSubtaskBtn) {
-                    const subtaskItem = deleteSubtaskBtn.closest('li');
-                    const subtaskId = subtaskItem.dataset.subtaskId;
-                    if (confirm('Czy na pewno chcesz usunąć to podzadanie?')) {
-                        fetch(`/delete_subtask/${subtaskId}/`, {
-                            method: 'DELETE',
-                            headers: {
-                                'X-CSRFToken': '{{ csrf_token }}'
-                            }
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.status === 'success') {
-                                subtaskItem.remove();
-                                const subtaskItemList = document.querySelector(`.list-group-item[data-id="${data.task_id}"]`);
-                                const subtaskCount = subtaskItemList.querySelector('.subtask-view strong');
-                                console.log("Subtask count element:", subtaskCount);
-                                if (subtaskCount) {
-                                    const currentCount = parseInt(subtaskCount.textContent.match(/\d+/)[0]) || 0;
-                                    subtaskCount.textContent = `Subtasks ${currentCount - 1}`;
-                                }
-                                console.log('Podzadanie usunięte!');
-                            } else {
-                                console.error('Nie udało się usunąć podzadania.');
-                            }
-                        })
-                        .catch(error => console.error('Błąd:', error));
-                    }
-                }
-            
-        });
-
-        // Oznaczenie subtasków jako zrobione/niezrobione
-        document.addEventListener('change', function(e) {
-            if (e.target && e.target.classList.contains('subtask-done-checkbox')) {
-                const checkbox = e.target;
-                const subtaskItem = checkbox.closest('li');
-                console.log("Subtask checkbox changed for subtask item:", subtaskItem);
-                const subtaskId = subtaskItem.dataset.subtaskId;
-                console.log("Subtask ID:", subtaskId);
-                const doneStatus = checkbox.checked;
-                const notDoneStatus = !doneStatus;
-
-                fetch(`/update_subtask_status/${subtaskId}/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({ 'done': doneStatus, 'subtask_id': subtaskId })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        console.log('Podzadanie zaktualizowane!');
-                            // Opcjonalnie możemy dodać jakieś wizualne oznaczenie, np. przekreślenie tekstu
-                            const updatedSubtaskItem = document.querySelector(`li[data-subtask-id="${subtaskId}"]`);
-                            if (updatedSubtaskItem) {
-                                const titleElement = updatedSubtaskItem.querySelector('span');
-                                if (titleElement) {
-                                    titleElement.style.textDecoration = doneStatus ? 'line-through' : 'none';
-                                }
-                            }  
-                    } else {
-                        console.error('Nie udało się zaktualizować podzadania.');
-                        checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
-                    }
-                })
-                .catch(error => {
-                    console.error('Błąd:', error);
-                    checkbox.checked = !doneStatus;
-                });
-            }
-        });
-
+        }
         
+        // Function to handle subtask status change
+        function changeSubtaskDone(target){
+            const checkbox = target.closest('.subtask-done-checkbox');
+            const subtaskItem = checkbox.closest('li');
+            const subtaskId = subtaskItem.dataset.subtaskId;
+            const doneStatus = checkbox.checked;
 
+            fetch(`/update_subtask_status/${subtaskId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ 'done': doneStatus, 'subtask_id': subtaskId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    console.log('Podzadanie zaktualizowane!');
+                    // Opcjonalnie możemy dodać jakieś wizualne oznaczenie, np. przekreślenie tekstu
+                    const updatedSubtaskItem = document.querySelector(`li[data-subtask-id="${subtaskId}"]`);
+                    if (updatedSubtaskItem) {
+                        updatedSubtaskItem.replaceWith(document.createRange().createContextualFragment(data.html).firstElementChild);
+                        }
+        
+                } else {
+                    console.error('Nie udało się zaktualizować podzadania.');
+                    checkbox.checked = !doneStatus; // Cofnięcie zmiany w razie błędu
+                }
+            })
+            .catch(error => {
+                console.error('Błąd:', error);
+                checkbox.checked = !doneStatus;
+            });
+        }
+
+        // Function to toggle subtask details
+        function toggleSubtaskDetails(target) {
+            const subtaskItem = target.closest('li');
+            if (!subtaskItem) return;
+
+            const subDescription = subtaskItem.querySelector('.sub-description');
+            if (subDescription) {
+                subDescription.style.display = subDescription.style.display === 'none' ? 'block' : 'none';
+            }
+        }
+
+        // Function to handle showing the add subtask form
+        function newSubtaskBtn(target) {
+            const newSubtaskBtn = target.closest('.new-subtasks-btn');
+            if (newSubtaskBtn) {
+                const subtaskList = newSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
+                const subtaskForm = newSubtaskBtn.closest('.subtask-view').querySelector('.add-subtask-form-container');
+                if (subtaskList) {
+                    subtaskList.style.display = subtaskList.style.display === 'none' ? 'block' : 'none';
+                    if (subtaskForm) {
+                        subtaskForm.style.display = subtaskForm.style.display === 'none' ? 'block' : 'none';
+                    }
+                }
+            }
+        }
+
+        // Function to handle canceling the add subtask form
+        function cancelSubtaskBtn(target) {
+            const cancelSubtaskBtn = target.closest('.cancel-add-subtask-btn');
+            if (cancelSubtaskBtn) {
+                const subtaskForm = cancelSubtaskBtn.closest('.add-subtask-form-container');
+                if (subtaskForm) {
+                    subtaskForm.style.display = 'none';
+                    const subtaskList = cancelSubtaskBtn.closest('.subtask-view').querySelector('.subtasks-list');
+                    if (subtaskList) {
+                        subtaskList.style.display = 'block';
+                    }
+                    const form = subtaskForm.querySelector('.add-subtask-form');
+                    if (form) {
+                        form.reset();
+                    }
+                }
+            }
+        }
+
+        // Function to handle deleting a subtask
+        function deleteSubtaskBtn(target) {
+            const deleteSubtaskBtn = target.closest('.delete-subtask-btn');
+            if (deleteSubtaskBtn) {
+                const subtaskItem = deleteSubtaskBtn.closest('li');
+                const subtaskId = subtaskItem.dataset.subtaskId;
+                if (confirm('Czy na pewno chcesz usunąć to podzadanie?')) {
+                    fetch(`/delete_subtask/${subtaskId}/`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            subtaskItem.remove();
+                            const subtaskItemList = document.querySelector(`.list-group-item[data-id="${data['task.id']}"]`);
+                            const subtaskCount = subtaskItemList.querySelector('.subtask-view strong');
+                            console.log("Subtask count element:", subtaskCount);
+                            if (subtaskCount) {
+                                const currentCount = parseInt(subtaskCount.textContent.match(/\d+/)[0]) || 0;
+                                subtaskCount.textContent = `Subtasks ${currentCount - 1}`;
+                            }
+                            console.log('Podzadanie usunięte!');
+                        } else {
+                            console.error('Nie udało się usunąć podzadania.');
+                        };
+                    })
+                    .catch(error => console.error('Błąd:', error));
+                };
+            };
+        };
+
+        document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (!target) return;
+            if (target.closest('.subtask-title')) {
+                toggleSubtaskDetails(target);
+            };
+            if (target.classList.contains('new-subtasks-btn')) {
+                newSubtaskBtn(target);
+            };
+             if (target.classList.contains('cancel-add-subtask-btn')) {
+                cancelSubtaskBtn(target);
+            };
+             if (target.classList.contains('delete-subtask-btn')) {
+                deleteSubtaskBtn(target);
+            };
+             if (target.classList.contains('comment-count')) {
+                toggleComments(target);
+            };
+            if (target.classList.contains('expand-btn') || target.classList.contains('collapse-btn')) {
+                toggleTaskDetails(target);
+            };
+             if (target.classList.contains('expand-btn-all') || target.classList.contains('collapse-btn-all')) {
+                toggleAllTasksDetalis(target);
+            };
+             if (target.classList.contains('do-now-btn')) {
+                doNowBtn(target);
+            };
+            if (target.classList.contains('edit-task-btn') || target.classList.contains('cancel-edit-btn') || target.classList.contains('save-edit-btn')) {
+                editTaskBtn(target);
+            };
+            if (target.classList.contains('delete-task-btn')) {
+                delTask(target);
+            };
+        });
+
+        document.addEventListener('change', function(e) {
+            const target = e.target;
+            if (!target) return;
+            if (target.classList.contains('task-done-checkbox')) {
+                changeTaskDone(target);
+            };
+            if (target.classList.contains('subtask-done-checkbox')) {
+                changeSubtaskDone(target);
+            };
+        });
+
+        document.addEventListener('submit', function(e) {
+            const target = e.target;
+            if (!target) return;
+            if (target.classList.contains('add-comment-form')) {
+                e.preventDefault();
+                addComment(target);
+            };
+            if (target.classList.contains('add-subtask-form')) {
+                e.preventDefault();
+                addSubtask(target);
+            };
+            if (target.id === 'add-task-form') {
+                e.preventDefault();
+                addTask(target);
+            };
+        })
 
     </script>
 </body>

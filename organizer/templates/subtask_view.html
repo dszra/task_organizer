@@ -1,0 +1,14 @@
+<li data-subtask-id="{{ subtask.id }}">
+    <input type="checkbox" class="subtask-done-checkbox" {% if subtask.done %}checked{% endif %}> 
+    <span class="subtask-title">
+    {% if subtask.done %}
+        <span style="text-decoration: line-through;">{{ subtask.title }}</span>
+    {% else %}
+        <span style="text-decoration: none;">{{ subtask.title }}</span>
+    {% endif %}
+    {% if subtask.end_date %}
+        <span style="font-size: 12px; color: gray;">(End Date: {{ subtask.end_date }})</span>
+    {% endif %}
+    </span><button class="delete-subtask-btn" style="background-color: red; color: white; border: none; padding: 2px 5px; cursor: pointer;">Delete</button>
+    <span class="sub-description" style="display: none;">{{ subtask.description }}</span>
+</li>

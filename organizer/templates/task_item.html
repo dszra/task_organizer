@@ -1,78 +1,67 @@
 <li class="list-group-item" 
-    data-id="{{ task_id }}" 
+    data-id="{{ task.id }}" 
     style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
     <!-- Widok statyczny zadania -->
     <div class="task-view" style="display: block;">
-        {% if not is_done %}
-            <span class="task-order">Order: {{ task_order }}</span>
+        {% if not task.done %}
+            <span class="task-order">Order: {{ task.order }}</span>
             <i class="handle">⠿</i>
         {% endif %}
 
         <button class="expand-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9660;</button>
         <button class="collapse-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9654;</button>
-        <span class="task-title"><strong>{{ task_title }}</strong></span>
+        <span class="task-title"><strong>{{ task.title }}</strong></span>
         <span class="task-done">
-            Done: <input type="checkbox" class="task-done-checkbox" {% if is_done %}checked{% endif %}>
+            Done: <input type="checkbox" class="task-done-checkbox" {% if task.done %}checked{% endif %}>
         </span>
-        {% if task_project %}
-           <span class="task-project">Project: {{ comments_count }}</span>
+        {% if task.project %}
+           <span class="task-project">Project: {{ task.project.name }}</span>
         {% endif %}
 
-        {% if task_end_date %}
-            <span class="task-end-date">End Date: {{ task_end_date }}</span>
+        {% if task.end_date %}
+            <span class="task-end-date">End Date: {{ task.end_date }}</span>
         {% endif %}
         
         <div class="task-details" style="display: block; margin-top: 10px;">
-            <p>{{ task_description }}</p>
+            <p>{{ task.description }}</p>
             
             <div class="task-comments">
-                <strong><span class="comment-count">Comments {{ comments_count }}:</span></strong>
+                <strong><span class="comment-count">Comments {{ task.comments.count }}:</span></strong>
                 <div class="comments-list" style="display: none;">
                     <ul>
-                        {% for comment in task_comments %}
-                        {% if comment.task_id == task_id %}
-                            <li>{{ comment.text }} ({{ comment.created_at }})</li>
+                        {% for comment in comments %}
+                        {% if comment.task.id == task.id %}
+                            {% include 'comment_view.html' with comment=comment %}
                         {% endif %}
                         {% endfor %}
                     </ul>
                     <p>
                         <form class="add-comment-form">
                             {% csrf_token %}
-                            <input type="hidden" name="task_id" value="{{ task_id }}">
-                            {{ task_com_form.text }}
+                            <input type="hidden" name="task.id" value="{{ task.id }}">
+                            {{ com_form.text }}
                             <button class="add-comment-btn" name="add-comment" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Comment</button>
                         </form>
                     </p>
                 </div>
             </div>
             <div class="subtask-view">
-                <strong>Subtasks {{ subtask_count }}</strong> <button class="new-subtasks-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">+</button>
+                <strong>Subtasks {{ task.subtasks.count }}</strong> <button class="new-subtasks-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">+</button>
                 <div class="subtasks-list" style="display: block;">
                     <ul>
-                        {% for subtask in task_subtasks %}
-                            {% if subtask.task_id == task_id %}
-                                <li data-subtask-id="{{ subtask.id }}">
-                                    <input type="checkbox" class="subtask-done-checkbox" {% if subtask.done %}checked{% endif %}> 
-                                    <span class="subtask-title">
-                                    {% if subtask.done %}
-                                        <span style="text-decoration: line-through;">{{ subtask.title }}</span>
-                                    {% else %}
-                                        <span style="text-decoration: none;">{{ subtask.title }}</span>
-                                    {% endif %}
-                                    {% if subtask.end_date %}
-                                        <span style="font-size: 12px; color: gray;">(End Date: {{ subtask.end_date }})</span>
-                                    {% endif %}
-                                    </span><button class="delete-subtask-btn" style="background-color: red; color: white; border: none; padding: 2px 5px; cursor: pointer;">Delete</button>
-                                    <span class="sub-description" style="display: none;">{{ subtask.description }}</span>
-                                </li>
+                        {% for subtask in subtasks %}
+                            {% if subtask.task.id == task.id %}
+                                {% include 'subtask_view.html' with subtask=subtask task=task %}
                             {% endif %}
                         {% endfor %}
-                    </ul>
+                </ul>
                 </div>
+                
+
                 <div class="add-subtask-form-container" style="display: none; margin-top: 10px;">
                     <form class="add-subtask-form" method="post">
                         {% csrf_token %}
-                        <input type="hidden" name="task_id" value="{{ task_id }}">
+                        <input type="hidden" name="task.id" value="{{ task.id }}">
                         Title: {{ sub_form.title }}
                         <br>Description: {{ sub_form.description }}
                         <br><button type="submit" class="add-subtask-btn" name="add-subtask" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Subtask</button>
@@ -91,13 +80,13 @@
     <div class="task-edit" style="display: none;">
         <form class="edit-task-form">
             {% csrf_token %}
-            <input type="text" name="title" value="{{ task_title }}" placeholder="Title" required><br>
-            <textarea name="description" placeholder="Description">{{ task_description }}</textarea><br>
+            <input type="text" name="title" value="{{ task.title }}" placeholder="Title" required><br>
+            <textarea name="description" placeholder="Description">{{ task.description }}</textarea><br>
             <label>
-                Done: <input type="checkbox" name="done" {% if is_done %}checked{% endif %}>
+                Done: <input type="checkbox" name="done" {% if task.done %}checked{% endif %}>
             </label><br>
-            <input type="date" name="end_date" value="{{ task_end_date|date:'Y-m-d' }}"><br>
-            <input type="text" name="project" value="{{ task_project.name }}" placeholder="Project"><br>
+            <input type="date" name="end_date" value="{{ task.end_date|date:'Y-m-d' }}"><br>
+            <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>
             <button type="button" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
             <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
         </form>
