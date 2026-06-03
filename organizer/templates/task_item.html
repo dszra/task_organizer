@@ -40,7 +40,7 @@
                             {% csrf_token %}
                             <input type="hidden" name="task.id" value="{{ task.id }}">
                             {{ com_form.text }}
-                            <button class="add-comment-btn" name="add-comment" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Comment</button>
+                            <button type="submit" class="add-comment-btn" name="add-comment" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Comment</button>
                         </form>
                     </p>
                 </div>
@@ -87,7 +87,7 @@
             </label><br>
             <input type="date" name="end_date" value="{{ task.end_date|date:'Y-m-d' }}"><br>
             <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>
-            <button type="button" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
+            <button type="submit" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
             <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
         </form>
     </div>

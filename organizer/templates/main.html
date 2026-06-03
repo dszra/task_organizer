@@ -249,8 +249,57 @@
             }
         }        
 
-        // Function to handle task editing
-        function editTaskBtn(target) {
+        // Function to handle task editing save
+        function saveTaskBtn(target) {
+            const taskItem = target.closest('.list-group-item');
+            const taskEdit = taskItem.querySelector('.task-edit');
+            const form = taskEdit.querySelector('.edit-task-form');
+            const formData = new FormData(form);
+            const taskId = taskItem.dataset.id;
+
+            fetch(`/edit_task/${taskId}/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify(Object.fromEntries(formData.entries()))
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.html.trim();
+                    const updatedTaskItem = tempDiv.firstElementChild;
+                    if (!updatedTaskItem) {
+                        console.error("Nie udało się utworzyć elementu z data.html");
+                        return;
+                    }
+                    taskItem.replaceWith(updatedTaskItem);
+                    console.log('Zadanie zaktualizowane!');
+                } else {
+                    console.error('Nie udało się zaktualizować zadania.');
+                }
+            })
+            .catch(error => console.error('Błąd:', error));
+        }
+
+        // Function to handle canceling the edit task form and show add task form
+        function cancelEditTaskBtn(target) {
+            const taskItem = target.closest('.list-group-item');
+            if (!taskItem) return;
+            const taskView = taskItem.querySelector('.task-view');
+            const taskEdit = taskItem.querySelector('.task-edit');
+            const form = taskEdit.querySelector('.edit-task-form');
+            if (target.classList.contains('cancel-edit-btn')) {
+                taskEdit.style.display = 'none';
+                taskView.style.display = 'block';
+                form.reset();
+            }
+        }
+
+        // Function to handle display Task editing form
+        function EditTaskBtn(target) {
             const taskItem = target.closest('.list-group-item');
             if (!taskItem) return;
             const taskView = taskItem.querySelector('.task-view');
@@ -258,41 +307,6 @@
             if (target.classList.contains('edit-task-btn')) {
                 taskView.style.display = 'none';
                 taskEdit.style.display = 'block';
-            };
-            if (target.classList.contains('cancel-edit-btn')) {
-                taskEdit.style.display = 'none';
-                taskView.style.display = 'block';
-            };
-            if (target.classList.contains('save-edit-btn')) {
-                const form = taskEdit.querySelector('.edit-task-form');
-                const formData = new FormData(form);
-                const taskId = taskItem.dataset.id;
-
-                fetch(`/edit_task/${taskId}/`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify(Object.fromEntries(formData.entries()))
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = data.html.trim();
-                        const updatedTaskItem = tempDiv.firstElementChild;
-                        if (!updatedTaskItem) {
-                            console.error("Nie udało się utworzyć elementu z data.html");
-                            return;
-                        }
-                        taskItem.replaceWith(updatedTaskItem);
-                        console.log('Zadanie zaktualizowane!');
-                    } else {
-                        console.error('Nie udało się zaktualizować zadania.');
-                    }
-                })
-                .catch(error => console.error('Błąd:', error));
             }
         }
 
@@ -571,34 +585,38 @@
             if (!target) return;
             if (target.closest('.subtask-title')) {
                 toggleSubtaskDetails(target);
-            };
+            }
             if (target.classList.contains('new-subtasks-btn')) {
                 newSubtaskBtn(target);
-            };
+            }
              if (target.classList.contains('cancel-add-subtask-btn')) {
                 cancelSubtaskBtn(target);
-            };
+            }
              if (target.classList.contains('delete-subtask-btn')) {
                 deleteSubtaskBtn(target);
-            };
+            }
              if (target.classList.contains('comment-count')) {
                 toggleComments(target);
-            };
+            }
             if (target.classList.contains('expand-btn') || target.classList.contains('collapse-btn')) {
                 toggleTaskDetails(target);
-            };
+            }
              if (target.classList.contains('expand-btn-all') || target.classList.contains('collapse-btn-all')) {
                 toggleAllTasksDetalis(target);
-            };
+            }
              if (target.classList.contains('do-now-btn')) {
                 doNowBtn(target);
-            };
-            if (target.classList.contains('edit-task-btn') || target.classList.contains('cancel-edit-btn') || target.classList.contains('save-edit-btn')) {
-                editTaskBtn(target);
-            };
+            }
+            if (target.classList.contains('edit-task-btn')) {
+                EditTaskBtn(target);
+            }
+            if (target.classList.contains('cancel-edit-btn')) {
+                cancelEditTaskBtn(target);
+            }
             if (target.classList.contains('delete-task-btn')) {
                 delTask(target);
-            };
+            }
+
         });
 
         document.addEventListener('change', function(e) {
@@ -606,10 +624,10 @@
             if (!target) return;
             if (target.classList.contains('task-done-checkbox')) {
                 changeTaskDone(target);
-            };
+            }
             if (target.classList.contains('subtask-done-checkbox')) {
                 changeSubtaskDone(target);
-            };
+            }
         });
 
         document.addEventListener('submit', function(e) {
@@ -618,15 +636,19 @@
             if (target.classList.contains('add-comment-form')) {
                 e.preventDefault();
                 addComment(target);
-            };
+            }
             if (target.classList.contains('add-subtask-form')) {
                 e.preventDefault();
                 addSubtask(target);
-            };
+            }
             if (target.id === 'add-task-form') {
                 e.preventDefault();
                 addTask(target);
-            };
+            }
+            if (target.classList.contains('edit-task-form')) {
+                e.preventDefault();
+                saveTaskBtn(target);
+            }
         })
 
     </script>
