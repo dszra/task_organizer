@@ -87,9 +87,9 @@ def add_task(request):
         done = data.get('done', False)
         project_name = data.get('project', None)
         project = Project.objects.get(id=project_name) if project_name else None
+        category = data.get('category', None)
 
-        
-        task = Task.objects.create(title=title, description=description, project=project, done=done)
+        task = Task.objects.create(title=title, description=description, project=project, done=done, category=category)
         html = render_to_string('task_item.html', {
             'task': task,
             'project': task.project,
@@ -155,7 +155,8 @@ def update_task_status(request, task_id):
             'subtasks': Subtask.objects.filter(task=task).order_by('id'),
             'comments_count': task.comments.count(),
             'subtask_count': task.subtasks.count(),
-            'com_form': CommentForm()
+            'com_form': CommentForm(),
+            'categories': Task.Category.choices
         })
         
 

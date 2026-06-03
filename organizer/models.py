@@ -23,6 +23,17 @@ class Task(models.Model):
         blank=True
     )
     order = models.PositiveIntegerField(db_index=True, null=True, blank=True)
+    
+    class Category(models.TextChoices):
+        BUG = 'BUG', 'Bug'
+        FEATURE = 'FEATURE', 'Feature'
+        IMPROVEMENT = 'IMPROVEMENT', 'Improvement'
+        TECH_TAKSK = 'TECH_TASK', 'Technical Task'
+        REFRACTORING = 'REFACTORING', 'Refactoring'
+        MAINTENANCE = 'MAINTENANCE', 'Maintenance'
+        TESTING = 'TESTING', 'Testing'
+        DOCUMENTATION = 'DOCUMENTATION', 'Documentation'
+    category = models.CharField(max_length=20, choices=Category.choices, default=None, null=True, blank=True)
 
     def order_num(self):
         if not self.pk and not self.done and self.order is None or self.order is 0:

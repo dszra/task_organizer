@@ -5,9 +5,10 @@ from django import forms
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'description', 'project', 'done']
+        fields = ['title', 'description', 'project', 'done', 'category']
         widgets = {
             'done': forms.CheckboxInput(attrs={'class': 'task-done-checkbox'}),
+            'category': forms.Select(attrs={'class': 'task-category-select'}),
         }
 
 class CommentForm(forms.ModelForm):
