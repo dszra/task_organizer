@@ -61,9 +61,10 @@ def add_task(request):
         own_end_date = data.get('own_end_date')
         user = request.user
         print(f"User: {user}")
+        priority = data.get('priority')
         
 
-        task = Task.objects.create(title=title, description=description, project=project, done=done, category=category, own_end_date=own_end_date, user=request.user)
+        task = Task.objects.create(title=title, description=description, project=project, done=done, category=category, own_end_date=own_end_date, user=request.user, priority=priority)
         print(f"Created task with ID: {task.id}")
         html = render_to_string('task_item.html', {
             'task': task,
@@ -78,7 +79,7 @@ def add_task(request):
             'categories': Category.choices,
             'own_end_date': own_end_date,
             'user': user,
-
+            'priority': task.priority,
         })
 
         return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id, 'user_id': request.user.id})
@@ -136,7 +137,11 @@ def update_task_status(request, task_id):
             'comments_count': task.comments.count(),
             'subtask_count': task.subtasks.count(),
             'com_form': CommentForm(),
-            'categories': Category.choices
+            'categories': Category.choices,
+            'sub_form': SubtaskForm(),
+            'form': TaskForm(),
+            'own_end_date': task.own_end_date,
+            'priority': task.priority,
         })
         
 
@@ -171,34 +176,26 @@ def edit_task(request, task_id):
     }
     """
     try:
-        data = json.loads(request.body)
+        # 1. Pobierasz obiekt
         task = Task.objects.get(id=task_id)
-
-        task.title = data.get('title', task.title)
-        task.description = data.get('description', task.description)
-        task.done = data.get('done', task.done)
-        end_date_str = data.get('own_end_date')
-        task.category = data.get('category', task.category)
-        form = TaskForm(request.POST, instance=task)
+        # 2. Ładujesz słownik z JSON-a
+        data = json.loads(request.body)
+        # 3. Przekazujesz słownik bezpośrednio do formularza z instancją obiektu!
+        form = TaskForm(data, instance=task)
         
-        
-        if end_date_str:
-            task.own_end_date = end_date_str
-        project_name = data.get('project')
-        if project_name:
-            project, created = Project.objects.get_or_create(name=project_name)
-            task.project = project
+        if form.is_valid():
+            form.save()
 
-        task.save()
+            html = render_to_string('task_item.html', {
+                "task": task,
+                "form": form,
+                'comments': Comment.objects.filter(task=task).order_by('-created_at'),
+                'subtasks': Subtask.objects.filter(task=task)
+            })
 
-        html = render_to_string('task_item.html', {
-            'task': task,
-            "form": form,
-            'comments': Comment.objects.filter(task=task).order_by('-created_at'),
-            'subtasks': Subtask.objects.filter(task=task)
-        })
-
-        return JsonResponse({'status': 'success', 'html': html, 'task_id': task_id})
+            return JsonResponse({'status': 'success', 'html': html, 'task_id': task_id})
+        else:
+            return JsonResponse({'status': 'error', 'errors': form.errors}, status=400)
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 

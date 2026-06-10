@@ -43,6 +43,7 @@
         {% if task.end_date %}
             <span class="task-end-date">End Date: {{ task.end_date }}</span>
         {% endif %}
+        <span class="task-priority">Priority: {{ task.get_priority_display }}</span>
         
         <div class="task-details" style="display: block; margin-top: 10px;">
             <p>{{ task.description }}</p>
@@ -113,6 +114,8 @@
                     {% endfor %}
                 </select>
             <br>
+            Priority: {{ form.priority }}
+
 
             Planing end date: <input type="date" name="own_end_date" value="{{ task.own_end_date|date:'Y-m-d' }}"><br>
             Project: <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>

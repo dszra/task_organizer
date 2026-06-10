@@ -18,6 +18,12 @@ class Category(models.TextChoices):
     TESTING = 'TESTING', 'Testing'
     DOCUMENTATION = 'DOCUMENTATION', 'Documentation'
 
+class Priority(models.TextChoices):
+    LOW = 'LOW', 'Low'
+    MEDIUM = 'MEDIUM', 'Medium'
+    HIGH = 'HIGH', 'High'
+
+
 class Task(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
@@ -34,9 +40,10 @@ class Task(models.Model):
         blank=True
     )
     order = models.PositiveIntegerField(db_index=True, null=True, blank=True)
-    
-    
     category = models.CharField(max_length=20, choices=Category.choices, default=None, null=True, blank=True)
+    priority = models.CharField(max_length=20, choices=Priority.choices, default="MEDIUM")
+
+    
 
     def order_num(self):
         if not self.pk and not self.done and self.order is None or self.order is 0:
