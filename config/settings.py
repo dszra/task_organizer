@@ -37,7 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'organizer'
+    'organizer',
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.github",
+    "allauth.socialaccount.providers.facebook",
 ]
 
 MIDDLEWARE = [
@@ -48,6 +54,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -99,6 +106,14 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Backends to login
+AUTHENTICATION_BACKENDS = [
+    # Domyslny backend Django (np. do logowania w panelu admina)
+    "django.contrib.auth.backends.ModelBackend",
+    # Backend specyficzny dla django-allauth
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
@@ -116,3 +131,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Użytkownik loguje się za pomocą adresu e-mail
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+
+# Czy adres e-mail musi być zweryfikowany przed zalogowaniem? ("mandatory", "optional", "none")
+ACCOUNT_EMAIL_VERIFICATION = "optional"
+
+# Gdzie przekierować po udanym logowaniu/wylogowaniu
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"

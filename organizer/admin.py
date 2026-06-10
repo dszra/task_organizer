@@ -8,7 +8,7 @@ from .models import Task, Project, Comment, Subtask
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     """Model zadania do wykonania"""
-    list_display = ('title', 'project', 'done', 'order')
+    list_display = ('title', 'project', 'done', 'order', 'create_date', 'end_date', 'user')
     list_filter = ('done', 'project')
     search_fields = ('title', 'description')
     readonly_fields = ('order', 'id', 'create_date', 'end_date')

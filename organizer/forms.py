@@ -5,10 +5,11 @@ from django import forms
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ['title', 'description', 'project', 'done', 'category']
+        fields = ['title', 'description', 'project', 'done', 'category', 'own_end_date']
         widgets = {
             'done': forms.CheckboxInput(attrs={'class': 'task-done-checkbox'}),
             'category': forms.Select(attrs={'class': 'task-category-select'}),
+            'own_end_date': forms.DateInput(attrs={'type': 'date', 'class': 'task-end-date-input'}),
         }
 
 class CommentForm(forms.ModelForm):

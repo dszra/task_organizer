@@ -18,6 +18,7 @@ from django.contrib import admin
 from django.urls import path
 
 from organizer import views
+from django.urls import include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -31,4 +32,5 @@ urlpatterns = [
     path('update_subtask_status/<int:subtask_id>/', views.subtask_done, name='update_subtask_status'),
     path('add_subtask/', views.add_subtask, name='add_subtask'),
     path('delete_subtask/<int:subtask_id>/', views.delete_subtask, name='delete_subtask'),
+    path('accounts/', include('allauth.urls')),
 ]

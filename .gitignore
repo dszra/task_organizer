@@ -1,0 +1,84 @@
+# ==========================================
+# Baza danych (SQLite)
+# ==========================================
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ==========================================
+# Django i pliki aplikacji
+# ==========================================
+# Lokalne ustawienia (zawierające np. SECRET_KEY czy dane do zewnętrznych API)
+local_settings.py
+.env
+
+# Pliki wgrywane przez użytkowników (Media) i zebrane pliki statyczne
+/media/
+/static/
+# Jeśli zbierasz statyki do konkretnego folderu (np.staticfiles), odkomentuj poniższe:
+# /staticfiles/
+
+# ==========================================
+# Środowisko wirtualne i kontenery
+# ==========================================
+.venv/
+venv/
+ENV/
+env/
+/env/
+/venv/
+
+# ==========================================
+# Pliki Pythona (kompilaty i pamięć podręczna)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Pliki dystrybucyjne i instalacyjne
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pliki testów i pokrycia kodu (Coverage)
+htmlcov/
+.toml
+.cache
+.pytest_cache/
+.coverage
+.coverage.*
+.nosexy
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# ==========================================
+# Narzędzia i edytory (IDE)
+# ==========================================
+# PyCharm / JetBrains
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Systemowe pliki tymczasowe
+.DS_Store
+Thumbs.db

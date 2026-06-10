@@ -29,7 +29,7 @@
     <ul id="sortable-list" style="list-style: none; padding: 0;">
         {% for task in tasks %}
         {% if not task.done %}
-            {% include 'task_item.html' with task=task comments=comments com_form=com_form subtasks=subtasks sub_form=sub_form  %}
+            {% include 'task_item.html' with task=task comments=comments com_form=com_form subtasks=subtasks sub_form=sub_form today=today today_warning1=today_warning1 today_warning2=today_warning2 form=form %}
             {% endif %}
         {% endfor %}
     </ul>
@@ -41,6 +41,7 @@
     <br>Description: {{ form.description }}
     <br>Project: {{ form.project }}
     <br>Category: {{ form.category }}
+    <br>Own end date: {{ form.own_end_date }}
     <br><button type="submit" id="add-task-btn" name="add-task">Add Task</button>
     </form>
 
@@ -195,13 +196,20 @@
         function addTask(target) {
             const addTaskButton = target.closest('#add-task-btn');
             const formData = new FormData(document.querySelector('#add-task-form'));
+
+            const rawData = Object.fromEntries(formData.entries());
+            const cleanedData = {};
+            for (const [key, value] of Object.entries(rawData)) {
+                cleanedData[key] = (typeof value === 'string' && value.trim() === '') ? null : value;
+            }
             fetch('/add_task/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: JSON.stringify(Object.fromEntries(formData.entries()))
+                credentials: 'include',
+                body: JSON.stringify(cleanedData)
             })
             .then(response => response.json())
             .then(data => {

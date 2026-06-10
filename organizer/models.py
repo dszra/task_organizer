@@ -8,13 +8,24 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
+class Category(models.TextChoices):
+    BUG = 'BUG', 'Bug'
+    FEATURE = 'FEATURE', 'Feature'
+    IMPROVEMENT = 'IMPROVEMENT', 'Improvement'
+    TECH_TASK = 'TECH_TASK', 'Technical Task'
+    REFRACTORING = 'REFACTORING', 'Refactoring'
+    MAINTENANCE = 'MAINTENANCE', 'Maintenance'
+    TESTING = 'TESTING', 'Testing'
+    DOCUMENTATION = 'DOCUMENTATION', 'Documentation'
 
 class Task(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)
     create_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(null=True, blank=True)
+    own_end_date = models.DateField(null=True, blank=True)
     done = models.BooleanField(default=False)
+    user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
@@ -24,15 +35,7 @@ class Task(models.Model):
     )
     order = models.PositiveIntegerField(db_index=True, null=True, blank=True)
     
-    class Category(models.TextChoices):
-        BUG = 'BUG', 'Bug'
-        FEATURE = 'FEATURE', 'Feature'
-        IMPROVEMENT = 'IMPROVEMENT', 'Improvement'
-        TECH_TAKSK = 'TECH_TASK', 'Technical Task'
-        REFRACTORING = 'REFACTORING', 'Refactoring'
-        MAINTENANCE = 'MAINTENANCE', 'Maintenance'
-        TESTING = 'TESTING', 'Testing'
-        DOCUMENTATION = 'DOCUMENTATION', 'Documentation'
+    
     category = models.CharField(max_length=20, choices=Category.choices, default=None, null=True, blank=True)
 
     def order_num(self):
@@ -53,6 +56,8 @@ class Task(models.Model):
     def save(self, *args, **kwargs):
         self.order = self.order_num()
         self.update_end = self.update_end_date()
+        if not self.user:
+            self.user = self.request.user
         super().save(*args, **kwargs)
 
     def __str__(self):

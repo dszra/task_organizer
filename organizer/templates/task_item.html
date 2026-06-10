@@ -21,6 +21,24 @@
         {% if task.category %}
            <span class="task-category">Category: {{ task.get_category_display }}</span>
         {% endif %}
+        {% if task.own_end_date and not task.end_date %}
+            <span class="task-end-date">Own End Date: {{ task.own_end_date }}</span>
+            {% if task.own_end_date <= today_warning2 %}
+                {% if task.own_end_date <= today_warning1 %}
+                    {% if task.own_end_date <= today %}
+                    już
+                    {% else %}
+                    mało
+                    {% endif %}
+                {% else %}
+                blisko
+                {% endif %}
+            {% endif %}
+            
+            
+                
+        {% endif %}
+
 
         {% if task.end_date %}
             <span class="task-end-date">End Date: {{ task.end_date }}</span>
@@ -84,19 +102,20 @@
     <div class="task-edit" style="display: none;">
         <form class="edit-task-form">
             {% csrf_token %}
-            <input type="text" name="title" value="{{ task.title }}" placeholder="Title" required><br>
-            <textarea name="description" placeholder="Description">{{ task.description }}</textarea><br>
-            <select name="category">
-                <option value="">Select Category</option>
-                {% for category in task.category %}
-                    <option value="{{ category.id }}" {% if task.category and task.category.id == category.id %}selected{% endif %}>{{ category.get_category_display }}</option>
-                {% endfor %}
-            </select><br>
-            <label>
-                Done: <input type="checkbox" name="done" {% if task.done %}checked{% endif %}>
-            </label><br>
-            <input type="date" name="end_date" value="{{ task.end_date|date:'Y-m-d' }}"><br>
-            <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>
+            Title: <input type="text" name="title" value="{{ task.title }}" placeholder="Title" required><br>
+            Description: <textarea name="description" placeholder="Description">{{ task.description }}</textarea><br>
+            Category: {{ task.category }}
+                <select name="category" id="id_category">
+                    {% for value, label in form.category.field.choices %}
+                        <option value="{{ value }}" {% if task.category == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            <br>
+
+            Planing end date: <input type="date" name="own_end_date" value="{{ task.own_end_date|date:'Y-m-d' }}"><br>
+            Project: <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>
             <button type="submit" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
             <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
         </form>
