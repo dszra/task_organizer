@@ -10,7 +10,7 @@ class TaskForm(forms.ModelForm):
             'done': forms.CheckboxInput(attrs={'class': 'task-done-checkbox'}),
             'category': forms.Select(attrs={'class': 'task-category-select'}),
             'own_end_date': forms.DateInput(attrs={'type': 'date', 'class': 'task-end-date-input'}),
-            'project': forms.Select(attrs={'class': 'task-project-select'}),
+            'project': forms.Select(attrs={'class': 'task-project-select', }),
             'priority': forms.Select(attrs={'class': 'task-priority-select'}),
         }
 

@@ -41,7 +41,7 @@ class Task(models.Model):
     )
     order = models.PositiveIntegerField(db_index=True, null=True, blank=True)
     category = models.CharField(max_length=20, choices=Category.choices, default=None, null=True, blank=True)
-    priority = models.CharField(max_length=20, choices=Priority.choices, default="MEDIUM")
+    priority = models.CharField(max_length=20, choices=Priority.choices, default="LOW")
 
     
 

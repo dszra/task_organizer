@@ -126,7 +126,14 @@
 
 
             Planing end date: <input type="date" name="own_end_date" value="{{ task.own_end_date|date:'Y-m-d' }}"><br>
-            Project: <input type="text" name="project" value="{{ task.project.name }}" placeholder="Project"><br>
+            Project: {{ task.project }}
+            <select name="project" id="id_project">
+                {% for project in form.project %}
+                <option value="{{ project.data.value }}" {% if task.project.id == project.data.value %}selected{% endif %}>
+                    {{ project.data.label }}
+                </option>
+                {% endfor %}
+            </select>
             <button type="submit" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
             <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
         </form>

@@ -178,11 +178,10 @@ def edit_task(request, task_id):
     try:
         # 1. Pobierasz obiekt
         task = Task.objects.get(id=task_id)
-        # 2. Ładujesz słownik z JSON-a
+        # 2. Ładuje słownik z JSON-a
         data = json.loads(request.body)
-        # 3. Przekazujesz słownik bezpośrednio do formularza z instancją obiektu!
+        # 3. Przekazuje słownik bezpośrednio do formularza z instancją obiektu!
         form = TaskForm(data, instance=task)
-        
         if form.is_valid():
             form.save()
 
