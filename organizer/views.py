@@ -65,24 +65,16 @@ def add_task(request):
         
 
         task = Task.objects.create(title=title, description=description, project=project, done=done, category=category, own_end_date=own_end_date, user=request.user, priority=priority)
-        print(f"Created task with ID: {task.id}")
+        task.refresh_from_db()
         html = render_to_string('task_item.html', {
             'task': task,
-            'project': task.project,
-            'comments': [],
-            'subtasks': [],
-            'comments_count': task.comments.count(),
-            'subtask_count': task.subtasks.count(),
             'com_form': CommentForm(),
             'sub_form': SubtaskForm(),
             'form': TaskForm(),
             'categories': Category.choices,
-            'own_end_date': own_end_date,
-            'user': user,
-            'priority': task.priority,
         })
 
-        return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id, 'user_id': request.user.id})
+        return JsonResponse({'status': 'success', 'html': html, 'task_id': task.id, 'user_id': request.user.id, 'own_end_date': task.own_end_date})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
@@ -140,7 +132,6 @@ def update_task_status(request, task_id):
             'categories': Category.choices,
             'sub_form': SubtaskForm(),
             'form': TaskForm(),
-            'own_end_date': task.own_end_date,
             'priority': task.priority,
         })
         
