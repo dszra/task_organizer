@@ -189,7 +189,9 @@ def edit_task(request, task_id):
                 "task": task,
                 "form": form,
                 'comments': Comment.objects.filter(task=task).order_by('-created_at'),
-                'subtasks': Subtask.objects.filter(task=task)
+                'subtasks': Subtask.objects.filter(task=task),
+                'com_form': CommentForm(),
+                'sub_form': SubtaskForm(),
             })
 
             return JsonResponse({'status': 'success', 'html': html, 'task_id': task_id})
