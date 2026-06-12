@@ -1,101 +1,118 @@
-<li class="list-group-item" 
-    data-id="{{ task.id }}" 
-    style="border: 1px solid black; padding: 10px; margin-bottom: 10px;">
-    <!-- Widok statyczny zadania -->
-    <div class="task-view" style="display: block;">
-        {% if not task.done %}
-            <span class="task-order">Order: {{ task.order }}</span>
-            <i class="handle">⠿</i>
+<li class="list-group-item 
+    {% if task.priority == 'high' %}priority-high{% elif task.priority == 'medium' %}priority-medium{% endif %}
+    {% if task.own_end_date %}
+        {% if task.own_end_date < today %}deadline-overdue
+        {% elif task.own_end_date == today %}deadline-today
+        {% elif task.own_end_date <= today_warning1 %}deadline-urgent
+        {% elif task.own_end_date <= today_warning2 %}deadline-near
         {% endif %}
-
-        <button class="expand-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9660;</button>
-        <button class="collapse-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">&#9654;</button>
-        <span class="task-title"><strong>{{ task.title }}</strong></span>
-        <span class="task-done">
-            Done: <input type="checkbox" class="task-done-checkbox" {% if task.done %}checked{% endif %}>
-        </span>
-        {% if task.project %}
-           <span class="task-project">Project: {{ task.project.name }}</span>
-        {% endif %}
-
-        {% if task.category %}
-           <span class="task-category">Category: {{ task.get_category_display }}</span>
-        {% endif %}
-        {% if task.own_end_date and not task.end_date %}
-            <span class="task-end-date">Own End Date: {{ task.own_end_date }}</span>
-            {% if task.own_end_date <= today_warning2 %}
-                {% if task.own_end_date <= today_warning1 %}
-                    {% if task.own_end_date <= today %}
-                    już
-                    {% else %}
-                    mało
-                    {% endif %}
-                {% else %}
-                blisko
-                {% endif %}
+    {% endif %}" 
+    data-id="{{ task.id }}">
+    
+    <div class="task-header-bar">
+        <div class="header-left">
+            {% if not task.done %}
+                <span class="task-order">Order: {{ task.order }}</span>
+                <i class="handle">⠿</i>
             {% endif %}
-            
-            
-                
-        {% endif %}
-
-
-        {% if task.end_date %}
-            <span class="task-end-date">End Date: {{ task.end_date }}</span>
-        {% endif %}
-        <span class="task-priority">Priority: {{ task.get_priority_display }}</span>
+            <button class="expand-btn">&#9660;</button>
+            <button class="collapse-btn">&#9654;</button>
+            <span class="task-title"><strong>{{ task.title }}</strong></span>
+        </div>
         
-        <div class="task-details" style="display: block; margin-top: 10px;">
-            <p>{{ task.description }}</p>
+        <div class="header-right">
+            <span class="task-done">
+                Done: <input type="checkbox" class="task-done-checkbox" {% if task.done %}checked{% endif %}>
+            </span>
+            {% if task.project %}
+               <span class="task-project">{{ task.project.name }}</span>
+            {% endif %}
+            {% if task.category %}
+               <span class="task-category">{{ task.get_category_display }}</span>
+            {% endif %}
+            {% if task.end_date %}
+                <span class="task-end-date">End: {{ task.end_date }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="task-view" style="display: block;">
+        
+        {% if task.own_end_date and not task.end_date %}
+            <div class="task-badge-container">
+                <span class="task-own-end-date-badge">
+                    Own End Date: {{ task.own_end_date }} 
+                    <strong>
+                    {% if task.own_end_date < today %}(PO TERMINIE)
+                    {% elif task.own_end_date == today %}(JUŻ!)
+                    {% elif task.own_end_date <= today_warning1 %}(MAŁO CZASU)
+                    {% elif task.own_end_date <= today_warning2 %}(BLISKO)
+                    {% endif %}
+                    </strong>
+                </span>
+                <span class="task-priority-badge">Priority: {{ task.get_priority_display }}</span>
+            </div>
+        {% endif %}
+
+        <div class="task-details">
+            <p class="task-description-text">{{ task.description }}</p>
             
-            <div class="task-comments">
-                <strong><span class="comment-count">Comments {{ task.comments.count }}:</span></strong>
-                <div class="comments-list" style="display: none;">
-                    <ul>
-                        {% for comment in comments %}
-                        {% if comment.task.id == task.id %}
-                            {% include 'comment_view.html' with comment=comment %}
-                        {% endif %}
-                        {% endfor %}
-                    </ul>
-                    <p>
+            <div class="task-columns-container">
+                
+                <div class="subtask-view">
+                    <div class="subtask-header">
+                        <strong>Subtasks {{ task.subtasks.count }}</strong> 
+                        <button class="new-subtasks-btn">+</button>
+                    </div>
+                    <div class="subtasks-list">
+                        <ul>
+                            {% for subtask in subtasks %}
+                                {% if subtask.task.id == task.id %}
+                                    {% include 'subtask_view.html' with subtask=subtask task=task %}
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <div class="add-subtask-form-container" style="display: none;">
+                        <form class="add-subtask-form" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="task.id" value="{{ task.id }}">
+                            Title: {{ sub_form.title }}
+                            <br>Description: {{ sub_form.description }}
+                            <br>
+                            <div class="form-buttons">
+                                <button type="submit" class="add-subtask-btn" name="add-subtask">Add</button>
+                                <button type="button" class="cancel-add-subtask-btn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="task-comments">
+                    <strong><span class="comment-count">Comments {{ task.comments.count }}:</span></strong>
+                    <div class="comments-list">
+                        <ul>
+                            {% for comment in comments %}
+                            {% if comment.task.id == task.id %}
+                                {% include 'comment_view.html' with comment=comment %}
+                            {% endif %}
+                            {% endfor %}
+                        </ul>
                         <form class="add-comment-form">
                             {% csrf_token %}
                             <input type="hidden" name="task.id" value="{{ task.id }}">
                             {{ com_form.text }}
-                            <button type="submit" class="add-comment-btn" name="add-comment" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Comment</button>
+                            <button type="submit" class="add-comment-btn" name="add-comment">Add Comment</button>
                         </form>
-                    </p>
+                    </div>
                 </div>
-            </div>
-            <div class="subtask-view">
-                <strong>Subtasks {{ task.subtasks.count }}</strong> <button class="new-subtasks-btn" style="background-color: transparent; border: none; cursor: pointer; font-size: 16px;">+</button>
-                <div class="subtasks-list" style="display: block;">
-                    <ul>
-                        {% for subtask in subtasks %}
-                            {% if subtask.task.id == task.id %}
-                                {% include 'subtask_view.html' with subtask=subtask task=task %}
-                            {% endif %}
-                        {% endfor %}
-                </ul>
-                </div>
-                
 
-                <div class="add-subtask-form-container" style="display: none; margin-top: 10px;">
-                    <form class="add-subtask-form" method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="task.id" value="{{ task.id }}">
-                        Title: {{ sub_form.title }}
-                        <br>Description: {{ sub_form.description }}
-                        <br><button type="submit" class="add-subtask-btn" name="add-subtask" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Add Subtask</button>
-                        <button type="button" class="cancel-add-subtask-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
-                    </form>
-                </div>
+            </div> <div class="task-actions-footer">
+                <button class="delete-task-btn">Delete</button>
+                <button class="edit-task-btn">Edit</button>
+                <button class="do-now-btn">Do Now</button>
             </div>
-            
-            <button class="delete-task-btn" style="background-color: red; color: white; border: none; padding: 5px 10px; cursor: pointer;">Delete</button>
-            <button class="edit-task-btn" style="background-color: blue; color: white; border: none; padding: 5px 10px; cursor: pointer;">Edit</button>
-            <button class="do-now-btn" style="background-color: orange; color: white; border: none; padding: 5px 10px; cursor: pointer;">Do Now</button>
         </div>
     </div>
 
@@ -133,8 +150,8 @@
                 </option>
                 {% endfor %}
             </select>
-            <button type="submit" class="save-edit-btn" style="background-color: green; color: white; border: none; padding: 5px 10px; cursor: pointer;">Save</button>
-            <button type="button" class="cancel-edit-btn" style="background-color: gray; color: white; border: none; padding: 5px 10px; cursor: pointer;">Cancel</button>
+            <button type="submit" class="save-edit-btn">Save</button>
+            <button type="button" class="cancel-edit-btn">Cancel</button>
         </form>
     </div>
 

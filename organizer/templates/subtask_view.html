@@ -1,14 +1,25 @@
-<li data-subtask-id="{{ subtask.id }}">
-    <input type="checkbox" class="subtask-done-checkbox" {% if subtask.done %}checked{% endif %}> 
-    <span class="subtask-title">
-    {% if subtask.done %}
-        <span style="text-decoration: line-through;">{{ subtask.title }}</span>
-    {% else %}
-        <span style="text-decoration: none;">{{ subtask.title }}</span>
+<li data-subtask-id="{{ subtask.id }}" class="subtask-item">
+    <div class="subtask-main-row">
+        <label class="subtask-label">
+            <input type="checkbox" class="subtask-done-checkbox" {% if subtask.done %}checked{% endif %}> 
+            <span class="subtask-title">
+                {% if subtask.done %}
+                    <span style="text-decoration: line-through; color: #a0aec0;">{{ subtask.title }}</span>
+                {% else %}
+                    <span>{{ subtask.title }}</span>
+                {% endif %}
+                {% if subtask.end_date %}
+                    <span class="subtask-date">(End: {{ subtask.end_date }})</span>
+                {% endif %}
+            </span>
+        </label>
+        <button class="delete-subtask-btn">Delete</button>
+    </div>
+    
+    {% if subtask.description %}
+        <div class="subtask-description-block">
+            {{ subtask.description }}
+        </div>
     {% endif %}
-    {% if subtask.end_date %}
-        <span style="font-size: 12px; color: gray;">(End Date: {{ subtask.end_date }})</span>
-    {% endif %}
-    </span><button class="delete-subtask-btn" style="background-color: red; color: white; border: none; padding: 2px 5px; cursor: pointer;">Delete</button>
     <span class="sub-description" style="display: none;">{{ subtask.description }}</span>
 </li>

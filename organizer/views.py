@@ -169,15 +169,22 @@ def edit_task(request, task_id):
     try:
         # 1. Pobierasz obiekt
         task = Task.objects.get(id=task_id)
+        edit_task_done = task.done
         # 2. Ładuje słownik z JSON-a
         data = json.loads(request.body)
         # 3. Przekazuje słownik bezpośrednio do formularza z instancją obiektu!
         form = TaskForm(data, instance=task)
+        print(form)
         if form.is_valid():
+            edited_task = form.save(commit=False)
+            edited_task.done = edit_task_done
+            edited_task.save()
             form.save()
-
+            
+            print(task.done)
             html = render_to_string('task_item.html', {
                 "task": task,
+                "task.done": task.done,
                 "form": form,
                 'comments': Comment.objects.filter(task=task).order_by('-created_at'),
                 'subtasks': Subtask.objects.filter(task=task),
